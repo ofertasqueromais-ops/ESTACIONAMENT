@@ -1,16 +1,24 @@
 // Pricing config
-const PRECO_HORA_CARRO = 10;
-const PRECO_HORA_MOTO = 5;
+const PRECO_HORA = 4;
+const VALOR_MAXIMO = 20;
+const TOLERANCIA_MINUTOS = 5;
 
 export function calcularValor(tipo: string, entrada: Date, saida: Date): number {
   const diffMs = saida.getTime() - entrada.getTime();
+  const diffMinutos = diffMs / (1000 * 60);
+
+  // Tolerância de 5 minutos
+  if (diffMinutos <= TOLERANCIA_MINUTOS) return 0;
+
   const diffHours = diffMs / (1000 * 60 * 60);
   
-  // Mínimo 1 hora
-  const horasCobradas = Math.max(1, Math.ceil(diffHours * 2) / 2); // arredonda para cima em 30min
+  // Mínimo 1 hora, arredonda para cima em 30min
+  const horasCobradas = Math.max(1, Math.ceil(diffHours * 2) / 2);
   
-  const precoHora = tipo === 'moto' ? PRECO_HORA_MOTO : PRECO_HORA_CARRO;
-  return Number((horasCobradas * precoHora).toFixed(2));
+  const valorCalculado = horasCobradas * PRECO_HORA;
+  
+  // Máximo R$20
+  return Number(Math.min(valorCalculado, VALOR_MAXIMO).toFixed(2));
 }
 
 export function formatarTempo(entrada: Date, saida: Date): string {
@@ -41,7 +49,8 @@ export function gerarComprovante(dados: {
   mensalista: boolean;
 }): string {
   const linhas = [
-    '🅿️ COMPROVANTE DE ESTACIONAMENTO',
+    '🅿️ PEREIRA ESTACIONAMENTO',
+    '📞 (37) 99806-1725',
     '================================',
     `Placa: ${dados.placa}`,
     `Tipo: ${dados.tipo === 'carro' ? '🚗 Carro' : '🏍️ Moto'}`,

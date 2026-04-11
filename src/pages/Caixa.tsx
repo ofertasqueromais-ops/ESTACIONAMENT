@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatarMoeda } from '@/lib/parking';
 import { Input } from '@/components/ui/input';
-import { DollarSign, CreditCard, Smartphone, Banknote, Search } from 'lucide-react';
+import { DollarSign, CreditCard, Smartphone, Banknote } from 'lucide-react';
 
 interface Pagamento {
   id: string;
@@ -17,14 +17,14 @@ export default function Caixa() {
   const { user } = useAuth();
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dataSelecionada, setDataSelecionada] = useState(
-    new Date().toISOString().split('T')[0]
-  );
+  const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
+  const [dataFim, setDataFim] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     if (!user) return;
-    const inicio = new Date(dataSelecionada + 'T00:00:00');
-    const fim = new Date(dataSelecionada + 'T23:59:59');
+    setLoading(true);
+    const inicio = new Date(dataInicio + 'T00:00:00');
+    const fim = new Date(dataFim + 'T23:59:59');
 
     supabase
       .from('pagamentos')
@@ -37,7 +37,7 @@ export default function Caixa() {
         setPagamentos(data || []);
         setLoading(false);
       });
-  }, [user, dataSelecionada]);
+  }, [user, dataInicio, dataFim]);
 
   const total = pagamentos.reduce((acc, p) => acc + Number(p.valor), 0);
   const totalDinheiro = pagamentos.filter(p => p.forma_pagamento === 'dinheiro').reduce((acc, p) => acc + Number(p.valor), 0);
@@ -60,21 +60,27 @@ export default function Caixa() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-heading font-bold">Caixa</h1>
-        <p className="text-muted-foreground text-sm">Movimentação financeira</p>
+        <p className="text-muted-foreground text-sm">Movimentação financeira por período</p>
       </div>
 
-      <Input
-        type="date"
-        value={dataSelecionada}
-        onChange={(e) => setDataSelecionada(e.target.value)}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground">De</label>
+          <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Até</label>
+          <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
+        </div>
+      </div>
 
       {/* Total */}
       <div className="stat-card bg-primary text-primary-foreground">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-80">Total do Dia</p>
+            <p className="text-sm opacity-80">Total do Período</p>
             <p className="text-3xl font-bold font-heading">{formatarMoeda(total)}</p>
+            <p className="text-xs opacity-60">{pagamentos.length} pagamento(s)</p>
           </div>
           <DollarSign className="w-10 h-10 opacity-30" />
         </div>
@@ -105,7 +111,7 @@ export default function Caixa() {
         {loading ? (
           <p className="text-muted-foreground text-center py-4">Carregando...</p>
         ) : pagamentos.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">Nenhum pagamento nesta data</p>
+          <p className="text-muted-foreground text-center py-8">Nenhum pagamento neste período</p>
         ) : (
           pagamentos.map(p => (
             <div key={p.id} className="flex items-center justify-between p-3 rounded-xl border bg-card">
@@ -116,7 +122,7 @@ export default function Caixa() {
                 <div>
                   <p className="font-semibold">{formatarMoeda(Number(p.valor))}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(p.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(p.data).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
