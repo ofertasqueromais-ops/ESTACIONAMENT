@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { NavLink } from '@/components/NavLink';
-import { Car, LogOut, LayoutDashboard, Users, Wallet } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Wallet, FileText } from 'lucide-react';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
@@ -21,6 +21,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </NavLink>
             <NavLink to="/caixa" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-secondary transition-colors">
               <Wallet className="w-4 h-4" /> Caixa
+            </NavLink>
+            <NavLink to="/recibos" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-secondary transition-colors">
+              <FileText className="w-4 h-4" /> Recibos
             </NavLink>
             <NavLink to="/mensalistas" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-secondary transition-colors">
               <Users className="w-4 h-4" /> Mensalistas
@@ -45,6 +48,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <NavLink to="/caixa" className="flex flex-col items-center gap-0.5 p-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <Wallet className="w-5 h-5" />
             Caixa
+          </NavLink>
+          <NavLink to="/recibos" className="flex flex-col items-center gap-0.5 p-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <FileText className="w-5 h-5" />
+            Recibos
           </NavLink>
           <NavLink to="/mensalistas" className="flex flex-col items-center gap-0.5 p-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <Users className="w-5 h-5" />
