@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Caixa from "./pages/Caixa";
+import Recibos from "./pages/Recibos";
 import MensalistasPage from "./pages/Mensalistas";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/caixa" element={<ProtectedRoute><Caixa /></ProtectedRoute>} />
+            <Route path="/recibos" element={<ProtectedRoute><Recibos /></ProtectedRoute>} />
             <Route path="/mensalistas" element={<ProtectedRoute><MensalistasPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
