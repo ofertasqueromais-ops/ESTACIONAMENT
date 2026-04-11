@@ -14,7 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      mensalistas: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          placa: string
+          status: string
+          telefone: string | null
+          updated_at: string
+          user_id: string
+          valor_mensal: number
+          vencimento: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          placa: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+          user_id: string
+          valor_mensal?: number
+          vencimento: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          placa?: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_mensal?: number
+          vencimento?: string
+        }
+        Relationships: []
+      }
+      pagamentos: {
+        Row: {
+          created_at: string
+          data: string
+          forma_pagamento: string
+          id: string
+          user_id: string
+          valor: number
+          veiculo_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: string
+          forma_pagamento: string
+          id?: string
+          user_id: string
+          valor?: number
+          veiculo_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          forma_pagamento?: string
+          id?: string
+          user_id?: string
+          valor?: number
+          veiculo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      veiculos: {
+        Row: {
+          created_at: string
+          entrada: string
+          id: string
+          mensalista: boolean
+          placa: string
+          saida: string | null
+          status: string
+          tipo: string
+          user_id: string
+          valor: number | null
+        }
+        Insert: {
+          created_at?: string
+          entrada?: string
+          id?: string
+          mensalista?: boolean
+          placa: string
+          saida?: string | null
+          status?: string
+          tipo?: string
+          user_id: string
+          valor?: number | null
+        }
+        Update: {
+          created_at?: string
+          entrada?: string
+          id?: string
+          mensalista?: boolean
+          placa?: string
+          saida?: string | null
+          status?: string
+          tipo?: string
+          user_id?: string
+          valor?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
