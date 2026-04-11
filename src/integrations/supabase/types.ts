@@ -14,9 +14,46 @@ export type Database = {
   }
   public: {
     Tables: {
+      estacionamentos: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          logo_url: string | null
+          nome: string
+          responsavel: string
+          status: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          logo_url?: string | null
+          nome: string
+          responsavel: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          responsavel?: string
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mensalistas: {
         Row: {
           created_at: string
+          estacionamento_id: string | null
           id: string
           nome: string
           placa: string
@@ -29,6 +66,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          estacionamento_id?: string | null
           id?: string
           nome: string
           placa: string
@@ -41,6 +79,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          estacionamento_id?: string | null
           id?: string
           nome?: string
           placa?: string
@@ -51,12 +90,21 @@ export type Database = {
           valor_mensal?: number
           vencimento?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mensalistas_estacionamento_id_fkey"
+            columns: ["estacionamento_id"]
+            isOneToOne: false
+            referencedRelation: "estacionamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pagamentos: {
         Row: {
           created_at: string
           data: string
+          estacionamento_id: string | null
           forma_pagamento: string
           id: string
           user_id: string
@@ -66,6 +114,7 @@ export type Database = {
         Insert: {
           created_at?: string
           data?: string
+          estacionamento_id?: string | null
           forma_pagamento: string
           id?: string
           user_id: string
@@ -75,6 +124,7 @@ export type Database = {
         Update: {
           created_at?: string
           data?: string
+          estacionamento_id?: string | null
           forma_pagamento?: string
           id?: string
           user_id?: string
@@ -82,6 +132,13 @@ export type Database = {
           veiculo_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pagamentos_estacionamento_id_fkey"
+            columns: ["estacionamento_id"]
+            isOneToOne: false
+            referencedRelation: "estacionamentos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pagamentos_veiculo_id_fkey"
             columns: ["veiculo_id"]
@@ -113,6 +170,7 @@ export type Database = {
         Row: {
           created_at: string
           entrada: string
+          estacionamento_id: string | null
           id: string
           mensalista: boolean
           placa: string
@@ -125,6 +183,7 @@ export type Database = {
         Insert: {
           created_at?: string
           entrada?: string
+          estacionamento_id?: string | null
           id?: string
           mensalista?: boolean
           placa: string
@@ -137,6 +196,7 @@ export type Database = {
         Update: {
           created_at?: string
           entrada?: string
+          estacionamento_id?: string | null
           id?: string
           mensalista?: boolean
           placa?: string
@@ -146,7 +206,15 @@ export type Database = {
           user_id?: string
           valor?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "veiculos_estacionamento_id_fkey"
+            columns: ["estacionamento_id"]
+            isOneToOne: false
+            referencedRelation: "estacionamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -162,7 +230,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "staff"
+      app_role: "admin" | "staff" | "master"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -290,7 +358,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff"],
+      app_role: ["admin", "staff", "master"],
     },
   },
 } as const
