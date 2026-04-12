@@ -104,7 +104,7 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" /> Admin Master
+          <Shield className="w-6 h-6 text-primary" /> Admin Mestre
         </h1>
         <p className="text-muted-foreground text-sm">Gestão de estacionamentos</p>
       </div>
