@@ -54,7 +54,7 @@ export default function AdminDashboard() {
     if (error) {
       toast.error('Erro ao carregar dados');
     } else {
-      setEstacionamentos(data || []);
+      setEstacionamentos((data as Estacionamento[]) || []);
     }
     setLoading(false);
   };
@@ -103,36 +103,38 @@ export default function AdminDashboard() {
 
     try {
       if (editing) {
+        const updateData: Record<string, any> = { 
+          nome: form.nome, 
+          responsavel: form.responsavel, 
+          email: form.email, 
+          telefone: form.telefone,
+          cnpj: form.cnpj,
+          endereco: form.endereco,
+          horario_funcionamento: form.horario_funcionamento,
+          logo_url: form.logo_url || null
+        };
         const { error } = await supabase
           .from('estacionamentos')
-          .update({ 
-            nome: form.nome, 
-            responsavel: form.responsavel, 
-            email: form.email, 
-            telefone: form.telefone,
-            cnpj: form.cnpj,
-            endereco: form.endereco,
-            horario_funcionamento: form.horario_funcionamento,
-            logo_url: form.logo_url || null
-          })
+          .update(updateData)
           .eq('id', editing.id);
 
         if (error) throw error;
         toast.success('Estacionamento atualizado!');
       } else {
+        const insertData: Record<string, any> = { 
+          nome: form.nome, 
+          responsavel: form.responsavel, 
+          email: form.email, 
+          telefone: form.telefone,
+          cnpj: form.cnpj,
+          endereco: form.endereco,
+          horario_funcionamento: form.horario_funcionamento,
+          logo_url: form.logo_url || null,
+          status: 'ativo'
+        };
         const { error } = await supabase
           .from('estacionamentos')
-          .insert({ 
-            nome: form.nome, 
-            responsavel: form.responsavel, 
-            email: form.email, 
-            telefone: form.telefone,
-            cnpj: form.cnpj,
-            endereco: form.endereco,
-            horario_funcionamento: form.horario_funcionamento,
-            logo_url: form.logo_url || null,
-            status: 'ativo'
-          });
+          .insert(insertData);
 
         if (error) throw error;
         toast.success('Estacionamento cadastrado com sucesso!');

@@ -1,8 +1,15 @@
+import { useState, useEffect } from 'react';
 import { Copy, Check, Search, FileText, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Receipt } from '@/components/Receipt';
+import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { useUserRole } from '@/hooks/useUserRole';
+import { supabase } from '@/integrations/supabase/client';
+import { formatarMoeda, formatarTempo, gerarComprovante } from '@/lib/parking';
 
 interface VeiculoFinalizado {
   id: string;
