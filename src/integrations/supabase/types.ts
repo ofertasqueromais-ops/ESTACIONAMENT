@@ -16,8 +16,11 @@ export type Database = {
     Tables: {
       estacionamentos: {
         Row: {
+          cnpj: string | null
           created_at: string
           email: string
+          endereco: string | null
+          horario_funcionamento: string | null
           id: string
           logo_url: string | null
           nome: string
@@ -27,8 +30,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cnpj?: string | null
           created_at?: string
           email: string
+          endereco?: string | null
+          horario_funcionamento?: string | null
           id?: string
           logo_url?: string | null
           nome: string
@@ -38,8 +44,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cnpj?: string | null
           created_at?: string
           email?: string
+          endereco?: string | null
+          horario_funcionamento?: string | null
           id?: string
           logo_url?: string | null
           nome?: string
@@ -172,7 +181,9 @@ export type Database = {
           entrada: string
           estacionamento_id: string | null
           id: string
+          marca: string | null
           mensalista: boolean
+          modelo: string | null
           placa: string
           saida: string | null
           status: string
@@ -185,7 +196,9 @@ export type Database = {
           entrada?: string
           estacionamento_id?: string | null
           id?: string
+          marca?: string | null
           mensalista?: boolean
+          modelo?: string | null
           placa: string
           saida?: string | null
           status?: string
@@ -198,7 +211,9 @@ export type Database = {
           entrada?: string
           estacionamento_id?: string | null
           id?: string
+          marca?: string | null
           mensalista?: boolean
+          modelo?: string | null
           placa?: string
           saida?: string | null
           status?: string
