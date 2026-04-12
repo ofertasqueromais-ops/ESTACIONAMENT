@@ -76,7 +76,7 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
         marca,
         modelo,
         mensalista: isMensalista && mensalista?.status === 'ativo',
-      });
+      } as any);
 
       if (error) throw error;
 
