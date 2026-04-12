@@ -22,6 +22,7 @@ interface VeiculoAtivo {
   tipo: string;
   entrada: string;
   mensalista: boolean;
+  estacionamento_id: string | null;
 }
 
 export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial }: Props) {
@@ -90,6 +91,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
       if (valorFinal > 0) {
         const { error: pagErr } = await supabase.from('pagamentos').insert({
           user_id: user.id,
+          estacionamento_id: veiculo.estacionamento_id, // Usar o mesmo do veículo
           veiculo_id: veiculo.id,
           valor: valorFinal,
           forma_pagamento: formaPagamento,

@@ -8,6 +8,7 @@ export function useUserRole() {
   const { user } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [estacionamentoId, setEstacionamentoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,6 +16,7 @@ export function useUserRole() {
       if (!user) {
         setRole(null);
         setStatus(null);
+        setEstacionamentoId(null);
         setLoading(false);
         return;
       }
@@ -29,16 +31,18 @@ export function useUserRole() {
       const currentRole = roleData?.role as AppRole;
       setRole(currentRole ?? null);
 
-      // If not mestre, fetch parking lot status
-      if (currentRole !== 'mestre') {
-        const { data: estData } = await supabase
-          .from('estacionamentos')
-          .select('status')
-          .eq('email', user.email)
-          .maybeSingle();
-        setStatus(estData?.status ?? 'ativo');
+      // Fetch parking lot data based on email
+      const { data: estData } = await supabase
+        .from('estacionamentos')
+        .select('id, status')
+        .eq('email', user.email)
+        .maybeSingle();
+      
+      if (estData) {
+        setEstacionamentoId(estData.id);
+        setStatus(estData.status);
       } else {
-        setStatus('ativo');
+        setStatus('ativo'); // Default for mestre or items without entry
       }
 
       setLoading(false);
@@ -52,6 +56,7 @@ export function useUserRole() {
   return { 
     role, 
     loading, 
+    estacionamentoId,
     isMaster: role === 'mestre', 
     isAdmin: role === 'admin', 
     isStaff: role === 'staff',

@@ -103,6 +103,7 @@ export default function MensalistasPage() {
       vencimento,
       status: vencimento < new Date().toISOString().split('T')[0] ? 'vencido' : 'ativo',
       user_id: user.id,
+      estacionamento_id: estacionamentoId,
     };
 
     try {

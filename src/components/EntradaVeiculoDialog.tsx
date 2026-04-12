@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { formatarPlaca } from '@/lib/parking';
 import { toast } from 'sonner';
 import { Car, Bike } from 'lucide-react';
@@ -17,6 +18,7 @@ interface Props {
 
 export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
   const { user } = useAuth();
+  const { estacionamentoId } = useUserRole();
   const [placa, setPlaca] = useState('');
   const [tipo, setTipo] = useState<'carro' | 'moto'>('carro');
   const [loading, setLoading] = useState(false);
@@ -66,6 +68,7 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
 
       const { error } = await supabase.from('veiculos').insert({
         user_id: user.id,
+        estacionamento_id: estacionamentoId,
         placa: placaFormatada,
         tipo,
         mensalista: isMensalista && mensalista?.status === 'ativo',
