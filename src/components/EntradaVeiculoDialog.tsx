@@ -20,6 +20,8 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
   const { user } = useAuth();
   const { estacionamentoId } = useUserRole();
   const [placa, setPlaca] = useState('');
+  const [marca, setMarca] = useState('');
+  const [modelo, setModelo] = useState('');
   const [tipo, setTipo] = useState<'carro' | 'moto'>('carro');
   const [loading, setLoading] = useState(false);
 
@@ -71,6 +73,8 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
         estacionamento_id: estacionamentoId,
         placa: placaFormatada,
         tipo,
+        marca,
+        modelo,
         mensalista: isMensalista && mensalista?.status === 'ativo',
       });
 
@@ -78,6 +82,8 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
 
       toast.success(`${tipo === 'carro' ? '🚗' : '🏍️'} Entrada registrada: ${placaFormatada}`);
       setPlaca('');
+      setMarca('');
+      setModelo('');
       setTipo('carro');
       onOpenChange(false);
       onSuccess();
@@ -106,6 +112,29 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
               maxLength={7}
               required
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="marca">Marca</Label>
+              <Input
+                id="marca"
+                value={marca}
+                onChange={(e) => setMarca(e.target.value)}
+                placeholder="Ex: Ford"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="modelo">Modelo</Label>
+              <Input
+                id="modelo"
+                value={modelo}
+                onChange={(e) => setModelo(e.target.value)}
+                placeholder="Ex: Fiesta"
+                className="mt-1"
+              />
+            </div>
           </div>
           <div>
             <Label>Tipo</Label>

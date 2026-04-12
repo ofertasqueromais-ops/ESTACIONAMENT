@@ -1,21 +1,28 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useImpersonation } from '@/hooks/useImpersonation';
-import { formatarMoeda, formatarTempo, gerarComprovante } from '@/lib/parking';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Copy, Check, Search, FileText } from 'lucide-react';
+import { Copy, Check, Search, FileText, Printer } from 'lucide-react';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Receipt } from '@/components/Receipt';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface VeiculoFinalizado {
   id: string;
   placa: string;
+  marca?: string | null;
+  modelo?: string | null;
   tipo: string;
   entrada: string;
   saida: string;
   valor: number;
   mensalista: boolean;
+  estacionamento_id: string | null;
+}
+
+interface Estacionamento {
+  nome: string;
+  cnpj?: string | null;
+  endereco?: string | null;
+  telefone?: string | null;
+  horario_funcionamento?: string | null;
 }
 
 export default function Recibos() {
@@ -27,6 +34,9 @@ export default function Recibos() {
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
   const [dataFim, setDataFim] = useState(new Date().toISOString().split('T')[0]);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [selectedVeiculo, setSelectedVeiculo] = useState<VeiculoFinalizado | null>(null);
+  const [estacionamento, setEstacionamento] = useState<Estacionamento | null>(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -36,7 +46,7 @@ export default function Recibos() {
 
     let query = supabase
       .from('veiculos')
-      .select('id, placa, tipo, entrada, saida, valor, mensalista')
+      .select('id, placa, tipo, entrada, saida, valor, mensalista, marca, modelo, estacionamento_id')
       .eq('status', 'finalizado')
       .gte('saida', inicio.toISOString())
       .lte('saida', fim.toISOString())
@@ -58,22 +68,21 @@ export default function Recibos() {
     v.placa.includes(filtro.toUpperCase())
   );
 
-  const copiarRecibo = (v: VeiculoFinalizado) => {
-    const pagamento = v.valor > 0 ? 'Avulso' : '';
-    const texto = gerarComprovante({
-      placa: v.placa,
-      tipo: v.tipo,
-      entrada: new Date(v.entrada).toLocaleString('pt-BR'),
-      saida: new Date(v.saida).toLocaleString('pt-BR'),
-      tempo: formatarTempo(new Date(v.entrada), new Date(v.saida)),
-      valor: formatarMoeda(v.valor || 0),
-      formaPagamento: pagamento,
-      mensalista: v.mensalista,
-    });
-    navigator.clipboard.writeText(texto);
-    setCopiadoId(v.id);
-    toast.success('Recibo copiado!');
-    setTimeout(() => setCopiadoId(null), 2000);
+  const imprimirRecibo = async (v: VeiculoFinalizado) => {
+    setSelectedVeiculo(v);
+    
+    // Fetch estacionamento details
+    if (v.estacionamento_id) {
+      const { data: est } = await supabase
+        .from('estacionamentos')
+        .select('nome, cnpj, endereco, telefone, horario_funcionamento')
+        .eq('id', v.estacionamento_id)
+        .maybeSingle();
+      
+      if (est) setEstacionamento(est);
+    }
+    
+    setIsPrintModalOpen(true);
   };
 
   return (
@@ -126,13 +135,58 @@ export default function Recibos() {
                   </p>
                 </div>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => copiarRecibo(v)}>
-                {copiadoId === v.id ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="ghost" onClick={() => imprimirRecibo(v)}>
+                  <Printer className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => {
+                   const texto = gerarComprovante({
+                    placa: v.placa,
+                    tipo: v.tipo,
+                    entrada: new Date(v.entrada).toLocaleString('pt-BR'),
+                    saida: new Date(v.saida).toLocaleString('pt-BR'),
+                    tempo: formatarTempo(new Date(v.entrada), new Date(v.saida)),
+                    valor: formatarMoeda(v.valor || 0),
+                    formaPagamento: v.valor > 0 ? 'Avulso' : '',
+                    mensalista: v.mensalista,
+                  });
+                  navigator.clipboard.writeText(texto);
+                  setCopiadoId(v.id);
+                  toast.success('Recibo copiado!');
+                  setTimeout(() => setCopiadoId(null), 2000);
+                }}>
+                  {copiadoId === v.id ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
           ))
         )}
       </div>
+
+      <Dialog open={isPrintModalOpen} onOpenChange={setIsPrintModalOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Imprimir Recibo</DialogTitle>
+          </DialogHeader>
+          {selectedVeiculo && (
+            <div className="space-y-4">
+              <div className="border rounded-xl bg-slate-50 overflow-hidden">
+                <Receipt 
+                  estacionamento={estacionamento || { nome: 'Estacionamento' }}
+                  veiculo={{
+                    ...selectedVeiculo,
+                    tempo: formatarTempo(new Date(selectedVeiculo.entrada), new Date(selectedVeiculo.saida)),
+                    formaPagamento: selectedVeiculo.valor > 0 ? 'Confirmado' : ''
+                  }}
+                />
+              </div>
+              <Button onClick={() => window.print()} className="w-full gap-2 h-12 shadow-lg shadow-primary/20">
+                <Printer className="w-5 h-5" /> Imprimir Recibo
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

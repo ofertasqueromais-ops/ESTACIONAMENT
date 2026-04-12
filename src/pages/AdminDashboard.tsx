@@ -17,6 +17,9 @@ interface Estacionamento {
   responsavel: string;
   email: string;
   telefone: string | null;
+  cnpj: string | null;
+  endereco: string | null;
+  horario_funcionamento: string | null;
   status: string;
   created_at: string;
 }
@@ -33,7 +36,10 @@ export default function AdminDashboard() {
     responsavel: '', 
     email: '', 
     telefone: '', 
-    logo_url: ''
+    logo_url: '',
+    cnpj: '',
+    endereco: '',
+    horario_funcionamento: ''
   });
   const { startImpersonation } = useImpersonation();
   const navigate = useNavigate();
@@ -104,6 +110,9 @@ export default function AdminDashboard() {
             responsavel: form.responsavel, 
             email: form.email, 
             telefone: form.telefone,
+            cnpj: form.cnpj,
+            endereco: form.endereco,
+            horario_funcionamento: form.horario_funcionamento,
             logo_url: form.logo_url || null
           })
           .eq('id', editing.id);
@@ -118,6 +127,9 @@ export default function AdminDashboard() {
             responsavel: form.responsavel, 
             email: form.email, 
             telefone: form.telefone,
+            cnpj: form.cnpj,
+            endereco: form.endereco,
+            horario_funcionamento: form.horario_funcionamento,
             logo_url: form.logo_url || null,
             status: 'ativo'
           });
@@ -178,14 +190,26 @@ export default function AdminDashboard() {
       responsavel: est.responsavel, 
       email: est.email, 
       telefone: est.telefone || '',
-      logo_url: est.logo_url || ''
+      logo_url: est.logo_url || '',
+      cnpj: est.cnpj || '',
+      endereco: est.endereco || '',
+      horario_funcionamento: est.horario_funcionamento || ''
     });
     setDialogOpen(true);
   };
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ nome: '', responsavel: '', email: '', telefone: '', logo_url: '' });
+    setForm({ 
+      nome: '', 
+      responsavel: '', 
+      email: '', 
+      telefone: '', 
+      logo_url: '',
+      cnpj: '',
+      endereco: '',
+      horario_funcionamento: ''
+    });
     setDialogOpen(true);
   };
 
@@ -314,6 +338,22 @@ export default function AdminDashboard() {
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1.5"><Phone className="w-4 h-4 text-primary" /> Telefone</label>
                 <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(00) 00000-0000" className="rounded-xl h-11" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">CNPJ</label>
+                <Input value={form.cnpj} onChange={e => setForm(f => ({ ...f, cnpj: e.target.value }))} placeholder="00.000.000/0000-00" className="rounded-xl h-11" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1.5">Endereço</label>
+              <Input value={form.endereco} onChange={e => setForm(f => ({ ...f, endereco: e.target.value }))} placeholder="Rua, Número, Bairro, Cidade" className="rounded-xl h-11" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">Horário de Funcionamento</label>
+                <Input value={form.horario_funcionamento} onChange={e => setForm(f => ({ ...f, horario_funcionamento: e.target.value }))} placeholder="Ex: 08:00 às 18:00" className="rounded-xl h-11" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1.5"><Camera className="w-4 h-4 text-primary" /> Logo do Local</label>

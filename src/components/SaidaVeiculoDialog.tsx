@@ -1,13 +1,6 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda, gerarComprovante } from '@/lib/parking';
-import { toast } from 'sonner';
-import { Search, Clock, DollarSign, AlertTriangle, Copy, Check } from 'lucide-react';
+import { Search, Clock, DollarSign, AlertTriangle, Copy, Check, Printer } from 'lucide-react';
+import { Receipt } from './Receipt';
+import { useRef } from 'react';
 
 interface Props {
   open: boolean;
@@ -19,21 +12,33 @@ interface Props {
 interface VeiculoAtivo {
   id: string;
   placa: string;
+  marca?: string | null;
+  modelo?: string | null;
   tipo: string;
   entrada: string;
   mensalista: boolean;
   estacionamento_id: string | null;
 }
 
+interface Estacionamento {
+  nome: string;
+  cnpj?: string | null;
+  endereco?: string | null;
+  telefone?: string | null;
+  horario_funcionamento?: string | null;
+}
+
 export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial }: Props) {
   const { user } = useAuth();
   const [placa, setPlaca] = useState(placaInicial || '');
   const [veiculo, setVeiculo] = useState<VeiculoAtivo | null>(null);
+  const [estacionamento, setEstacionamento] = useState<Estacionamento | null>(null);
   const [formaPagamento, setFormaPagamento] = useState<string>('dinheiro');
   const [loading, setLoading] = useState(false);
   const [mensalistaVencido, setMensalistaVencido] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [finalizado, setFinalizado] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const agora = new Date();
   const valor = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora) : 0;
@@ -59,18 +64,15 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
 
     setVeiculo(data);
 
-    // Check mensalista status
-    if (data.mensalista) {
-      const { data: mens } = await supabase
-        .from('mensalistas')
-        .select('vencimento, status')
-        .eq('placa', placaFormatada)
-        .eq('user_id', user.id)
+    // Fetch estacionamento details
+    if (data.estacionamento_id) {
+      const { data: est } = await supabase
+        .from('estacionamentos')
+        .select('nome, cnpj, endereco, telefone, horario_funcionamento')
+        .eq('id', data.estacionamento_id)
         .maybeSingle();
-
-      if (mens && (mens.status === 'vencido' || new Date(mens.vencimento) < new Date())) {
-        setMensalistaVencido(true);
-      }
+      
+      if (est) setEstacionamento(est);
     }
   };
 
@@ -109,23 +111,8 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     }
   };
 
-  const copiarComprovante = () => {
-    if (!veiculo) return;
-    const saida = new Date();
-    const texto = gerarComprovante({
-      placa: veiculo.placa,
-      tipo: veiculo.tipo,
-      entrada: new Date(veiculo.entrada).toLocaleString('pt-BR'),
-      saida: saida.toLocaleString('pt-BR'),
-      tempo,
-      valor: formatarMoeda(valor),
-      formaPagamento,
-      mensalista: veiculo.mensalista && !mensalistaVencido,
-    });
-    navigator.clipboard.writeText(texto);
-    setCopiado(true);
-    toast.success('Comprovante copiado!');
-    setTimeout(() => setCopiado(false), 2000);
+  const imprimirRecibo = () => {
+    window.print();
   };
 
   const handleClose = (o: boolean) => {
@@ -140,7 +127,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading">Saída de Veículo</DialogTitle>
         </DialogHeader>
@@ -165,18 +152,43 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
             </div>
           </div>
         ) : finalizado ? (
-          <div className="text-center space-y-4 py-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-success/10 flex items-center justify-center">
-              <Check className="w-8 h-8 text-success" />
+          <div className="space-y-4 py-2">
+            <div className="bg-success/5 border border-success/20 p-4 rounded-xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                <Check className="w-5 h-5 text-success" />
+              </div>
+              <div>
+                <p className="font-semibold text-success">Saída finalizada!</p>
+                <p className="text-xs text-muted-foreground">O veículo já pode deixar o pátio.</p>
+              </div>
             </div>
-            <p className="font-semibold">Saída finalizada!</p>
-            <Button onClick={copiarComprovante} variant="outline" className="gap-2">
-              {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copiado ? 'Copiado!' : 'Copiar Comprovante'}
-            </Button>
-            <Button onClick={() => handleClose(false)} className="w-full">
-              Fechar
-            </Button>
+
+            <div className="border rounded-xl bg-slate-50 overflow-hidden">
+              <Receipt 
+                ref={receiptRef}
+                estacionamento={estacionamento || { nome: 'Estacionamento' }}
+                veiculo={{
+                  ...veiculo,
+                  id: veiculo.id,
+                  placa: veiculo.placa,
+                  entrada: veiculo.entrada,
+                  saida: new Date().toISOString(),
+                  tempo,
+                  valor,
+                  formaPagamento,
+                  mensalista: veiculo.mensalista && !mensalistaVencido
+                }}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={() => window.print()} variant="outline" className="gap-2 h-11 border-2">
+                <Printer className="w-4 h-4" /> Imprimir
+              </Button>
+              <Button onClick={() => handleClose(false)} className="h-11 shadow-lg shadow-primary/20">
+                Fechar
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
