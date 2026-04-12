@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Building2, Plus, Pencil, Power, Shield, Globe, Lock, Mail, Phone, User, Trash2 } from 'lucide-react';
+import { Building2, Plus, Pencil, Power, Shield, Globe, Mail, Phone, User, Trash2, ExternalLink, Info } from 'lucide-react';
 
 interface Estacionamento {
   id: string;
@@ -31,8 +31,7 @@ export default function AdminDashboard() {
     responsavel: '', 
     email: '', 
     telefone: '', 
-    logo_url: '',
-    password: '' 
+    logo_url: ''
   });
   const { startImpersonation } = useImpersonation();
   const navigate = useNavigate();
@@ -74,29 +73,8 @@ export default function AdminDashboard() {
           .eq('id', editing.id);
 
         if (error) throw error;
-
-        // Update password if provided
-        if (form.password) {
-          const { error: authError } = await supabase.functions.invoke('manage-user', {
-            body: { email: form.email, password: form.password, action: 'update' }
-          });
-          if (authError) toast.warning('Estacionamento atualizado, mas houve erro ao mudar a senha');
-        }
-
         toast.success('Estacionamento atualizado!');
       } else {
-        // Create auth user first via Edge Function
-        const { data: authData, error: authError } = await supabase.functions.invoke('manage-user', {
-          body: { 
-            email: form.email, 
-            password: form.password || '123456', 
-            action: 'create',
-            role: 'admin' 
-          }
-        });
-
-        if (authError) throw new Error('Erro ao criar conta de acesso: ' + authError.message);
-
         const { error } = await supabase
           .from('estacionamentos')
           .insert({ 
@@ -109,7 +87,8 @@ export default function AdminDashboard() {
           });
 
         if (error) throw error;
-        toast.success('Estacionamento e conta criados com sucesso!');
+        toast.success('Estacionamento cadastrado com sucesso!');
+        toast.info('Lembre-se de criar o usuário no Auth se ainda não o fez.', { duration: 6000 });
       }
 
       setDialogOpen(false);
@@ -145,7 +124,6 @@ export default function AdminDashboard() {
     if (error) {
       toast.error(error.message);
     } else {
-      // Also delete the user role (cascade should handle it, but let's be sure)
       toast.success('Estacionamento removido');
       loadEstacionamentos();
     }
@@ -164,15 +142,14 @@ export default function AdminDashboard() {
       responsavel: est.responsavel, 
       email: est.email, 
       telefone: est.telefone || '',
-      logo_url: est.logo_url || '',
-      password: '' 
+      logo_url: est.logo_url || ''
     });
     setDialogOpen(true);
   };
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ nome: '', responsavel: '', email: '', telefone: '', logo_url: '', password: '' });
+    setForm({ nome: '', responsavel: '', email: '', telefone: '', logo_url: '' });
     setDialogOpen(true);
   };
 
@@ -186,7 +163,7 @@ export default function AdminDashboard() {
             </div>
             Painel Mestre
           </h1>
-          <p className="text-muted-foreground mt-1">Gerencie as unidades e acessos da plataforma</p>
+          <p className="text-muted-foreground mt-1">Gestão de unidades e permissões</p>
         </div>
         <Button onClick={openCreate} className="h-12 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
           <Plus className="w-5 h-5 mr-1" /> Novo Estacionamento
@@ -271,6 +248,16 @@ export default function AdminDashboard() {
             <DialogTitle className="text-2xl font-heading">{editing ? 'Configurar Unidade' : 'Novo Estacionamento'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 py-4">
+            <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 flex gap-3">
+              <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-semibold text-primary">Instruções de Acesso:</p>
+                <p className="text-muted-foreground">
+                  Após cadastrar os dados abaixo, você deve criar o usuário manualmente na aba <strong>Authentication</strong> do Supabase usando o mesmo e-mail.
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1.5"><Building2 className="w-4 h-4 text-primary" /> Nome do Local *</label>
@@ -285,30 +272,25 @@ export default function AdminDashboard() {
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-1.5"><Mail className="w-4 h-4 text-primary" /> E-mail de Login *</label>
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@estacionamento.com" className="rounded-xl h-11" />
-              <p className="text-[10px] text-muted-foreground px-1 italic">Este e-mail será usado para acessar o painel desta unidade.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-1.5"><Lock className="w-4 h-4 text-primary" /> {editing ? 'Nova Senha (opcional)' : 'Senha de Acesso *'}</label>
-                <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={editing ? 'Deixe vazio para manter' : 'Mínimo 6 caracteres'} className="rounded-xl h-11" />
-              </div>
-              <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1.5"><Phone className="w-4 h-4 text-primary" /> Telefone</label>
                 <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(00) 00000-0000" className="rounded-xl h-11" />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5"><Globe className="w-4 h-4 text-primary" /> URL da Logo</label>
+                <Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://exemplo.com/logo.png" className="rounded-xl h-11" />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-1.5"><Globe className="w-4 h-4 text-primary" /> URL da Logo</label>
-              <Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://exemplo.com/logo.png" className="rounded-xl h-11" />
-              {form.logo_url && (
-                <div className="mt-2 flex items-center gap-2 p-2 border rounded-xl bg-muted/30">
-                  <img src={form.logo_url} className="w-10 h-10 rounded-lg object-cover" alt="Preview" onError={(e) => (e.currentTarget.src = "")} />
-                  <span className="text-[10px] text-muted-foreground truncate">Prévia da logo carregada</span>
-                </div>
-              )}
-            </div>
+            {form.logo_url && (
+              <div className="flex items-center gap-2 p-2 border rounded-xl bg-muted/30">
+                <img src={form.logo_url} className="w-10 h-10 rounded-lg object-cover" alt="Preview" onError={(e) => (e.currentTarget.src = "")} />
+                <span className="text-[10px] text-muted-foreground truncate">Prévia da logo carregada</span>
+              </div>
+            )}
           </div>
           <DialogFooter className="mt-2">
             <Button variant="ghost" onClick={() => setDialogOpen(false)} className="rounded-xl h-11">Cancelar</Button>
