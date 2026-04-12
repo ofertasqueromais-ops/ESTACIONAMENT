@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Building2, Plus, Pencil, Power, Shield, Globe, Mail, Phone, User, Trash2, ExternalLink, Info } from 'lucide-react';
+import { Building2, Plus, Pencil, Power, Shield, Globe, Mail, Phone, User, Trash2, Camera, Loader2, Info } from 'lucide-react';
 
 interface Estacionamento {
   id: string;
@@ -24,8 +24,10 @@ interface Estacionamento {
 export default function AdminDashboard() {
   const [estacionamentos, setEstacionamentos] = useState<Estacionamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Estacionamento | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({ 
     nome: '', 
     responsavel: '', 
@@ -52,6 +54,40 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { loadEstacionamentos(); }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(filePath);
+
+      setForm(f => ({ ...f, logo_url: publicUrl }));
+      toast.success('Imagem enviada!');
+    } catch (err: any) {
+      toast.error('Erro ao enviar imagem: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!form.nome || !form.responsavel || !form.email) {
@@ -280,15 +316,39 @@ export default function AdminDashboard() {
                 <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(00) 00000-0000" className="rounded-xl h-11" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-1.5"><Globe className="w-4 h-4 text-primary" /> URL da Logo</label>
-                <Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://exemplo.com/logo.png" className="rounded-xl h-11" />
+                <label className="text-sm font-medium flex items-center gap-1.5"><Camera className="w-4 h-4 text-primary" /> Logo do Local</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="w-full h-11 rounded-xl gap-2 overflow-hidden"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : form.logo_url ? (
+                    "Trocar Logo"
+                  ) : (
+                    "Selecionar Imagem"
+                  )}
+                </Button>
               </div>
             </div>
 
             {form.logo_url && (
               <div className="flex items-center gap-2 p-2 border rounded-xl bg-muted/30">
-                <img src={form.logo_url} className="w-10 h-10 rounded-lg object-cover" alt="Preview" onError={(e) => (e.currentTarget.src = "")} />
-                <span className="text-[10px] text-muted-foreground truncate">Prévia da logo carregada</span>
+                <img src={form.logo_url} className="w-10 h-10 rounded-lg object-cover" alt="Preview" />
+                <span className="text-[10px] text-muted-foreground truncate">Logo selecionada com sucesso</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setForm(f => ({ ...f, logo_url: '' }))}>
+                  <Trash2 className="w-3 h-3 text-destructive" />
+                </Button>
               </div>
             )}
           </div>

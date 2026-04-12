@@ -1,34 +1,84 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { NavLink } from '@/components/NavLink';
-import { LogOut, LayoutDashboard, Users, Wallet, FileText, Shield, X } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Wallet, FileText, Shield, X, AlertTriangle } from 'lucide-react';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
   const { isMaster } = useUserRole();
-  const { isImpersonating, impersonatedEstacionamentoNome, stopImpersonation } = useImpersonation();
+  const { isImpersonating, impersonatedEstacionamentoNome, impersonatedEstacionamentoId, stopImpersonation } = useImpersonation();
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [estNome, setEstNome] = useState<string>('Pereira');
+
+  useEffect(() => {
+    const fetchLogo = async () => {
+      let targetEmail = user?.email;
+      
+      // Se estiver personificando, busca os dados daquela unidade
+      if (isImpersonating && impersonatedEstacionamentoId) {
+        const { data } = await supabase
+          .from('estacionamentos')
+          .select('nome, logo_url')
+          .eq('id', impersonatedEstacionamentoId)
+          .maybeSingle();
+        if (data) {
+          setLogoUrl(data.logo_url);
+          setEstNome(data.nome);
+        }
+        return;
+      }
+
+      // Caso contrário, busca os dados do usuário logado
+      if (targetEmail) {
+        const { data } = await supabase
+          .from('estacionamentos')
+          .select('nome, logo_url')
+          .eq('email', targetEmail)
+          .maybeSingle();
+        if (data) {
+          setLogoUrl(data.logo_url);
+          setEstNome(data.nome);
+        } else {
+          setLogoUrl(null);
+          setEstNome('Pereira');
+        }
+      }
+    };
+
+    fetchLogo();
+  }, [user, isImpersonating, impersonatedEstacionamentoId]);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Impersonation banner */}
       {isImpersonating && (
-        <div className="bg-warning text-warning-foreground text-center text-sm py-1.5 px-4 flex items-center justify-center gap-2">
-          <Shield className="w-4 h-4" />
-          Modo Suporte: <strong>{impersonatedEstacionamentoNome}</strong>
-          <Button variant="ghost" size="icon" className="h-6 w-6 ml-2" onClick={stopImpersonation}>
-            <X className="w-3 h-3" />
+        <div className="bg-warning text-warning-foreground text-center text-xs py-2 px-4 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="font-medium">MODO SUPORTE ATIVO:</span>
+            <span className="bg-warning-foreground/10 px-2 py-0.5 rounded-md font-bold">{impersonatedEstacionamentoNome}</span>
+          </div>
+          <Button variant="outline" size="sm" className="h-7 text-xs bg-transparent border-warning-foreground/20 hover:bg-warning-foreground/10 text-warning-foreground gap-1.5" onClick={stopImpersonation}>
+            <X className="w-3 h-3" /> Encerrar Acesso
           </Button>
         </div>
       )}
 
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
         <div className="container mx-auto flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2">
-            <img src="/logo-pereira.jpeg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-            <span className="font-heading font-bold text-lg">Pereira</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-secondary border shadow-sm flex items-center justify-center">
+              {logoUrl ? (
+                <img src={logoUrl} alt={estNome} className="w-full h-full object-cover" />
+              ) : (
+                <Shield className="w-5 h-5 text-primary/50" />
+              )}
+            </div>
+            <span className="font-heading font-bold text-lg tracking-tight">{estNome}</span>
           </div>
           <nav className="hidden md:flex items-center gap-1">
             {isMaster && !isImpersonating && (

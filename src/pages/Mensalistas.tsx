@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ interface Mensalista {
 
 export default function MensalistasPage() {
   const { user } = useAuth();
+  const { isImpersonating, impersonatedEstacionamentoId } = useImpersonation();
   const [mensalistas, setMensalistas] = useState<Mensalista[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,11 +38,19 @@ export default function MensalistasPage() {
 
   const carregar = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    
+    let query = supabase
       .from('mensalistas')
       .select('*')
-      .eq('user_id', user.id)
       .order('nome');
+
+    if (isImpersonating && impersonatedEstacionamentoId) {
+      query = query.eq('estacionamento_id', impersonatedEstacionamentoId);
+    } else {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data } = await query;
 
     // Auto-update status based on vencimento
     const hoje = new Date().toISOString().split('T')[0];

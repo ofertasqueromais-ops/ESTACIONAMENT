@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { formatarMoeda } from '@/lib/parking';
 import { Input } from '@/components/ui/input';
 import { DollarSign, CreditCard, Smartphone, Banknote } from 'lucide-react';
@@ -15,6 +16,7 @@ interface Pagamento {
 
 export default function Caixa() {
   const { user } = useAuth();
+  const { isImpersonating, impersonatedEstacionamentoId } = useImpersonation();
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
@@ -26,18 +28,24 @@ export default function Caixa() {
     const inicio = new Date(dataInicio + 'T00:00:00');
     const fim = new Date(dataFim + 'T23:59:59');
 
-    supabase
+    let query = supabase
       .from('pagamentos')
       .select('*')
-      .eq('user_id', user.id)
       .gte('data', inicio.toISOString())
       .lte('data', fim.toISOString())
-      .order('data', { ascending: false })
-      .then(({ data }) => {
-        setPagamentos(data || []);
-        setLoading(false);
-      });
-  }, [user, dataInicio, dataFim]);
+      .order('data', { ascending: false });
+
+    if (isImpersonating && impersonatedEstacionamentoId) {
+      query = query.eq('estacionamento_id', impersonatedEstacionamentoId);
+    } else {
+      query = query.eq('user_id', user.id);
+    }
+
+    query.then(({ data }) => {
+      setPagamentos(data || []);
+      setLoading(false);
+    });
+  }, [user, dataInicio, dataFim, isImpersonating, impersonatedEstacionamentoId]);
 
   const total = pagamentos.reduce((acc, p) => acc + Number(p.valor), 0);
   const totalDinheiro = pagamentos.filter(p => p.forma_pagamento === 'dinheiro').reduce((acc, p) => acc + Number(p.valor), 0);

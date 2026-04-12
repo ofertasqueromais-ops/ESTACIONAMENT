@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { formatarMoeda, formatarTempo, gerarComprovante } from '@/lib/parking';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ interface VeiculoFinalizado {
 
 export default function Recibos() {
   const { user } = useAuth();
+  const { isImpersonating, impersonatedEstacionamentoId } = useImpersonation();
   const [veiculos, setVeiculos] = useState<VeiculoFinalizado[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('');
@@ -32,19 +34,25 @@ export default function Recibos() {
     const inicio = new Date(dataInicio + 'T00:00:00');
     const fim = new Date(dataFim + 'T23:59:59');
 
-    supabase
+    let query = supabase
       .from('veiculos')
       .select('id, placa, tipo, entrada, saida, valor, mensalista')
-      .eq('user_id', user.id)
       .eq('status', 'finalizado')
       .gte('saida', inicio.toISOString())
       .lte('saida', fim.toISOString())
-      .order('saida', { ascending: false })
-      .then(({ data }) => {
-        setVeiculos((data as VeiculoFinalizado[]) || []);
-        setLoading(false);
-      });
-  }, [user, dataInicio, dataFim]);
+      .order('saida', { ascending: false });
+
+    if (isImpersonating && impersonatedEstacionamentoId) {
+      query = query.eq('estacionamento_id', impersonatedEstacionamentoId);
+    } else {
+      query = query.eq('user_id', user.id);
+    }
+
+    query.then(({ data }) => {
+      setVeiculos((data as VeiculoFinalizado[]) || []);
+      setLoading(false);
+    });
+  }, [user, dataInicio, dataFim, isImpersonating, impersonatedEstacionamentoId]);
 
   const veiculosFiltrados = veiculos.filter(v =>
     v.placa.includes(filtro.toUpperCase())

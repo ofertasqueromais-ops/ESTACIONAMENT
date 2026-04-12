@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EntradaVeiculoDialog } from '@/components/EntradaVeiculoDialog';
@@ -19,6 +20,7 @@ interface Veiculo {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { isImpersonating, impersonatedEstacionamentoId } = useImpersonation();
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [filtro, setFiltro] = useState('');
   const [entradaOpen, setEntradaOpen] = useState(false);
@@ -28,15 +30,23 @@ export default function Dashboard() {
 
   const carregarVeiculos = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    
+    let query = supabase
       .from('veiculos')
       .select('id, placa, tipo, entrada, mensalista')
       .eq('status', 'ativo')
-      .eq('user_id', user.id)
       .order('entrada', { ascending: false });
+
+    if (isImpersonating && impersonatedEstacionamentoId) {
+      query = query.eq('estacionamento_id', impersonatedEstacionamentoId);
+    } else {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data } = await query;
     setVeiculos(data || []);
     setLoading(false);
-  }, [user]);
+  }, [user, isImpersonating, impersonatedEstacionamentoId]);
 
   useEffect(() => { carregarVeiculos(); }, [carregarVeiculos]);
 
