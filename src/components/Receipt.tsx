@@ -115,15 +115,45 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
 
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          body * { visibility: hidden; }
-          .receipt-container, .receipt-container * { visibility: visible; }
+          @page {
+            margin: 0;
+            size: auto;
+          }
+          body {
+            margin: 0;
+            -webkit-print-color-adjust: exact;
+          }
+          body * {
+            visibility: hidden;
+          }
+          .receipt-container, .receipt-container * {
+            visibility: visible;
+          }
           .receipt-container {
             position: absolute;
             left: 0;
             top: 0;
-            width: 80mm; /* Common thermal printer width */
-            padding: 0;
-            box-shadow: none;
+            width: 100%;
+            max-width: 80mm;
+            padding: 10mm 5mm !important;
+            margin: 0 auto !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+            height: auto !important;
+          }
+          /* Reset Radix UI / Shadcn UI Dialog positioning for print */
+          div[role="dialog"], 
+          div[data-state="open"] {
+            position: static !important;
+            transform: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: auto !important;
+            max-width: none !important;
+            background: none !important;
+          }
+          .print\:hidden {
+            display: none !important;
           }
         }
       `}} />
