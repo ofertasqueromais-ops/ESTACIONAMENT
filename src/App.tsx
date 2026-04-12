@@ -69,14 +69,21 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { useImpersonation } from "@/hooks/useImpersonation";
+
 function SmartRedirect() {
   const { user, loading } = useAuth();
   const { isMaster, isBlocked, loading: roleLoading } = useUserRole();
+  const { isImpersonating } = useImpersonation();
   
   if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (isBlocked) return <BlockedScreen />;
-  if (isMaster) return <Navigate to="/admin" replace />;
+  
+  // Se for mestre e NÃO estiver personificando, vai para o admin
+  // Se estiver personificando, deixa ver o dashboard do pátio
+  if (isMaster && !isImpersonating) return <Navigate to="/admin" replace />;
+  if (isMaster && isImpersonating) return <AppLayout><Dashboard /></AppLayout>;
   
   return <AppLayout><Dashboard /></AppLayout>;
 }
