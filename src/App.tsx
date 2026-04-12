@@ -14,22 +14,51 @@ import Recibos from "./pages/Recibos";
 import MensalistasPage from "./pages/Mensalistas";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import { ShieldAlert, LogOut } from "lucide-react";
+import { Button } from "./components/ui/button";
 
 const queryClient = new QueryClient();
 
+function BlockedScreen() {
+  const { signOut } = useAuth();
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center space-y-6 animate-in fade-in duration-500">
+      <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
+        <ShieldAlert className="w-10 h-10 text-destructive" />
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-heading font-bold">Acesso Bloqueado</h1>
+        <p className="text-muted-foreground max-w-sm mx-auto">
+          Sua unidade está temporariamente suspensa. Entre em contato com a administração para regularizar seu acesso.
+        </p>
+      </div>
+      <Button onClick={signOut} variant="outline" className="gap-2 rounded-xl">
+        <LogOut className="w-4 h-4" /> Sair da Conta
+      </Button>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
+  const { isBlocked, loading: roleLoading } = useUserRole();
+  
+  if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (isBlocked) return <BlockedScreen />;
+  
   return <AppLayout>{children}</AppLayout>;
 }
 
 function MasterRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const { isMaster, loading: roleLoading } = useUserRole();
+  const { isMaster, loading: roleLoading, isBlocked } = useUserRole();
+  
   if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (isBlocked) return <BlockedScreen />;
   if (!isMaster) return <Navigate to="/" replace />;
+  
   return <AppLayout>{children}</AppLayout>;
 }
 
@@ -42,10 +71,13 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
 function SmartRedirect() {
   const { user, loading } = useAuth();
-  const { isMaster, loading: roleLoading } = useUserRole();
+  const { isMaster, isBlocked, loading: roleLoading } = useUserRole();
+  
   if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (isBlocked) return <BlockedScreen />;
   if (isMaster) return <Navigate to="/admin" replace />;
+  
   return <AppLayout><Dashboard /></AppLayout>;
 }
 

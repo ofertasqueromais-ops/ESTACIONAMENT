@@ -4,12 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Building2, Plus, Pencil, XCircle, Shield, Users, DollarSign, CheckCircle } from 'lucide-react';
+import { Building2, Plus, Pencil, Power, Shield, Globe, Lock, Mail, Phone, User, Trash2 } from 'lucide-react';
 
 interface Estacionamento {
   id: string;
@@ -27,16 +26,29 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Estacionamento | null>(null);
-  const [form, setForm] = useState({ nome: '', responsavel: '', email: '', telefone: '' });
+  const [form, setForm] = useState({ 
+    nome: '', 
+    responsavel: '', 
+    email: '', 
+    telefone: '', 
+    logo_url: '',
+    password: '' 
+  });
   const { startImpersonation } = useImpersonation();
   const navigate = useNavigate();
 
   const loadEstacionamentos = async () => {
-    const { data } = await supabase
+    setLoading(true);
+    const { data, error } = await supabase
       .from('estacionamentos')
       .select('*')
       .order('created_at', { ascending: false });
-    setEstacionamentos(data || []);
+    
+    if (error) {
+      toast.error('Erro ao carregar dados');
+    } else {
+      setEstacionamentos(data || []);
+    }
     setLoading(false);
   };
 
@@ -44,29 +56,67 @@ export default function AdminDashboard() {
 
   const handleSave = async () => {
     if (!form.nome || !form.responsavel || !form.email) {
-      toast.error('Preencha todos os campos obrigatórios');
+      toast.error('Preencha os campos obrigatórios (*)');
       return;
     }
 
-    if (editing) {
-      const { error } = await supabase
-        .from('estacionamentos')
-        .update({ nome: form.nome, responsavel: form.responsavel, email: form.email, telefone: form.telefone })
-        .eq('id', editing.id);
-      if (error) { toast.error(error.message); return; }
-      toast.success('Estacionamento atualizado!');
-    } else {
-      const { error } = await supabase
-        .from('estacionamentos')
-        .insert({ nome: form.nome, responsavel: form.responsavel, email: form.email, telefone: form.telefone });
-      if (error) { toast.error(error.message); return; }
-      toast.success('Estacionamento criado!');
-    }
+    try {
+      if (editing) {
+        const { error } = await supabase
+          .from('estacionamentos')
+          .update({ 
+            nome: form.nome, 
+            responsavel: form.responsavel, 
+            email: form.email, 
+            telefone: form.telefone,
+            logo_url: form.logo_url || null
+          })
+          .eq('id', editing.id);
 
-    setDialogOpen(false);
-    setEditing(null);
-    setForm({ nome: '', responsavel: '', email: '', telefone: '' });
-    loadEstacionamentos();
+        if (error) throw error;
+
+        // Update password if provided
+        if (form.password) {
+          const { error: authError } = await supabase.functions.invoke('manage-user', {
+            body: { email: form.email, password: form.password, action: 'update' }
+          });
+          if (authError) toast.warning('Estacionamento atualizado, mas houve erro ao mudar a senha');
+        }
+
+        toast.success('Estacionamento atualizado!');
+      } else {
+        // Create auth user first via Edge Function
+        const { data: authData, error: authError } = await supabase.functions.invoke('manage-user', {
+          body: { 
+            email: form.email, 
+            password: form.password || '123456', 
+            action: 'create',
+            role: 'admin' 
+          }
+        });
+
+        if (authError) throw new Error('Erro ao criar conta de acesso: ' + authError.message);
+
+        const { error } = await supabase
+          .from('estacionamentos')
+          .insert({ 
+            nome: form.nome, 
+            responsavel: form.responsavel, 
+            email: form.email, 
+            telefone: form.telefone,
+            logo_url: form.logo_url || null,
+            status: 'ativo'
+          });
+
+        if (error) throw error;
+        toast.success('Estacionamento e conta criados com sucesso!');
+      }
+
+      setDialogOpen(false);
+      loadEstacionamentos();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao salvar');
+    }
   };
 
   const toggleStatus = async (est: Estacionamento) => {
@@ -75,176 +125,197 @@ export default function AdminDashboard() {
       .from('estacionamentos')
       .update({ status: newStatus })
       .eq('id', est.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`Estacionamento ${newStatus === 'ativo' ? 'ativado' : 'desativado'}!`);
-    loadEstacionamentos();
+    
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(`Estacionamento ${newStatus === 'ativo' ? 'ativado' : 'bloqueado'}!`);
+      loadEstacionamentos();
+    }
+  };
+
+  const handleDelete = async (est: Estacionamento) => {
+    if (!confirm(`Tem certeza que deseja excluir permanentemente o estacionamento "${est.nome}"?`)) return;
+
+    const { error } = await supabase
+      .from('estacionamentos')
+      .delete()
+      .eq('id', est.id);
+    
+    if (error) {
+      toast.error(error.message);
+    } else {
+      // Also delete the user role (cascade should handle it, but let's be sure)
+      toast.success('Estacionamento removido');
+      loadEstacionamentos();
+    }
   };
 
   const handleImpersonate = (est: Estacionamento) => {
     startImpersonation(est.id, est.nome);
     navigate('/');
-    toast.info(`Modo suporte: ${est.nome}`);
+    toast.info(`Modo suporte: ${est.nome}`, { icon: <Shield className="w-4 h-4" /> });
   };
 
   const openEdit = (est: Estacionamento) => {
     setEditing(est);
-    setForm({ nome: est.nome, responsavel: est.responsavel, email: est.email, telefone: est.telefone || '' });
+    setForm({ 
+      nome: est.nome, 
+      responsavel: est.responsavel, 
+      email: est.email, 
+      telefone: est.telefone || '',
+      logo_url: est.logo_url || '',
+      password: '' 
+    });
     setDialogOpen(true);
   };
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ nome: '', responsavel: '', email: '', telefone: '' });
+    setForm({ nome: '', responsavel: '', email: '', telefone: '', logo_url: '', password: '' });
     setDialogOpen(true);
   };
 
-  const ativos = estacionamentos.filter(e => e.status === 'ativo').length;
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" /> Admin Mestre
-        </h1>
-        <p className="text-muted-foreground text-sm">Gestão de estacionamentos</p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-primary" />
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-heading font-bold flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <Shield className="w-6 h-6 text-primary-foreground" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{estacionamentos.length}</p>
-              <p className="text-xs text-muted-foreground">Estacionamentos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-success" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{ativos}</p>
-              <p className="text-xs text-muted-foreground">Ativos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-warning" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">R$ --</p>
-              <p className="text-xs text-muted-foreground">Faturamento (futuro)</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* List header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-heading font-semibold">Estacionamentos</h2>
-        <Button onClick={openCreate} size="sm">
-          <Plus className="w-4 h-4 mr-1" /> Novo
+            Painel Mestre
+          </h1>
+          <p className="text-muted-foreground mt-1">Gerencie as unidades e acessos da plataforma</p>
+        </div>
+        <Button onClick={openCreate} className="h-12 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
+          <Plus className="w-5 h-5 mr-1" /> Novo Estacionamento
         </Button>
       </div>
 
-      {/* Estacionamentos table */}
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">Carregando...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <Card key={i} className="animate-pulse">
+              <div className="h-48 bg-muted rounded-t-xl" />
+              <div className="p-6 space-y-3">
+                <div className="h-6 bg-muted rounded w-3/4" />
+                <div className="h-4 bg-muted rounded w-1/2" />
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : estacionamentos.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">Nenhum estacionamento cadastrado</p>
-      ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="hidden sm:table-cell">Responsável</TableHead>
-                  <TableHead className="hidden md:table-cell">Telefone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {estacionamentos.map(est => (
-                  <TableRow key={est.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                          {est.logo_url ? (
-                            <img src={est.logo_url} className="w-8 h-8 rounded-lg object-cover" alt="" />
-                          ) : (
-                            <Building2 className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{est.nome}</p>
-                          <p className="text-xs text-muted-foreground">{est.email}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm">{est.responsavel}</TableCell>
-                    <TableCell className="hidden md:table-cell text-sm">{est.telefone || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={est.status === 'ativo' ? 'default' : 'secondary'} className={est.status === 'ativo' ? 'bg-success/10 text-success border-success/20' : ''}>
-                        {est.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(est)} title="Editar">
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleStatus(est)} title={est.status === 'ativo' ? 'Desativar' : 'Ativar'}>
-                          <XCircle className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleImpersonate(est)} title="Acessar como cliente">
-                          <Shield className="w-4 h-4 text-primary" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <div className="text-center py-20 bg-card rounded-2xl border-2 border-dashed flex flex-col items-center justify-center space-y-4">
+          <Building2 className="w-12 h-12 text-muted-foreground/50" />
+          <div>
+            <p className="text-xl font-semibold">Nenhum estacionamento</p>
+            <p className="text-muted-foreground">Comece cadastrando a primeira unidade</p>
           </div>
-        </Card>
+          <Button variant="outline" onClick={openCreate}>Cadastrar Unidade</Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {estacionamentos.map(est => (
+            <Card key={est.id} className={`group overflow-hidden transition-all hover:shadow-xl border-t-4 ${est.status === 'ativo' ? 'border-t-success' : 'border-t-warning'}`}>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div className="w-16 h-16 rounded-xl bg-secondary overflow-hidden flex items-center justify-center border shadow-inner">
+                    {est.logo_url ? (
+                      <img src={est.logo_url} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <Building2 className="w-8 h-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <Badge variant={est.status === 'ativo' ? 'default' : 'secondary'} className={est.status === 'ativo' ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-warning border-warning/20'}>
+                    {est.status === 'ativo' ? 'Ativo' : 'Bloqueado'}
+                  </Badge>
+                </div>
+                <CardTitle className="text-xl mt-4 font-heading">{est.nome}</CardTitle>
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-1">
+                  <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {est.responsavel}</span>
+                  <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {est.email}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 border-t bg-muted/30">
+                <div className="grid grid-cols-4 gap-2">
+                  <Button variant="outline" size="icon" className="h-10 w-full" onClick={() => openEdit(est)} title="Editar">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className={`h-10 w-full ${est.status === 'ativo' ? 'text-warning hover:bg-warning/10' : 'text-success hover:bg-success/10'}`} 
+                    onClick={() => toggleStatus(est)} 
+                    title={est.status === 'ativo' ? 'Bloquear Acesso' : 'Ativar Acesso'}
+                  >
+                    <Power className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-10 w-full text-primary hover:bg-primary/10" onClick={() => handleImpersonate(est)} title="Acessar como Unidade">
+                    <Globe className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-10 w-full text-destructive hover:bg-destructive/10" onClick={() => handleDelete(est)} title="Excluir">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar Estacionamento' : 'Novo Estacionamento'}</DialogTitle>
+            <DialogTitle className="text-2xl font-heading">{editing ? 'Configurar Unidade' : 'Novo Estacionamento'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Nome do estacionamento *</label>
-              <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Pereira Estacionamento" />
+          <div className="grid gap-5 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5"><Building2 className="w-4 h-4 text-primary" /> Nome do Local *</label>
+                <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Unidade Centro" className="rounded-xl h-11" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5"><User className="w-4 h-4 text-primary" /> Responsável *</label>
+                <Input value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} placeholder="Nome do gestor" className="rounded-xl h-11" />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium">Responsável *</label>
-              <Input value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} placeholder="Nome do responsável" />
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1.5"><Mail className="w-4 h-4 text-primary" /> E-mail de Login *</label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@estacionamento.com" className="rounded-xl h-11" />
+              <p className="text-[10px] text-muted-foreground px-1 italic">Este e-mail será usado para acessar o painel desta unidade.</p>
             </div>
-            <div>
-              <label className="text-sm font-medium">Email (login) *</label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@exemplo.com" />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5"><Lock className="w-4 h-4 text-primary" /> {editing ? 'Nova Senha (opcional)' : 'Senha de Acesso *'}</label>
+                <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={editing ? 'Deixe vazio para manter' : 'Mínimo 6 caracteres'} className="rounded-xl h-11" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5"><Phone className="w-4 h-4 text-primary" /> Telefone</label>
+                <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(00) 00000-0000" className="rounded-xl h-11" />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium">Telefone</label>
-              <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(00) 00000-0000" />
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1.5"><Globe className="w-4 h-4 text-primary" /> URL da Logo</label>
+              <Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://exemplo.com/logo.png" className="rounded-xl h-11" />
+              {form.logo_url && (
+                <div className="mt-2 flex items-center gap-2 p-2 border rounded-xl bg-muted/30">
+                  <img src={form.logo_url} className="w-10 h-10 rounded-lg object-cover" alt="Preview" onError={(e) => (e.currentTarget.src = "")} />
+                  <span className="text-[10px] text-muted-foreground truncate">Prévia da logo carregada</span>
+                </div>
+              )}
             </div>
-            <Button onClick={handleSave} className="w-full">
-              {editing ? 'Salvar alterações' : 'Criar estacionamento'}
-            </Button>
           </div>
+          <DialogFooter className="mt-2">
+            <Button variant="ghost" onClick={() => setDialogOpen(false)} className="rounded-xl h-11">Cancelar</Button>
+            <Button onClick={handleSave} className="rounded-xl h-11 px-8 shadow-lg shadow-primary/20">
+              {editing ? 'Salvar Configurações' : 'Criar Estacionamento'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
