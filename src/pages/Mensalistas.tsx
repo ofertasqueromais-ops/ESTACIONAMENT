@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ interface Mensalista {
 export default function MensalistasPage() {
   const { user } = useAuth();
   const { isImpersonating, impersonatedEstacionamentoId } = useImpersonation();
+  const { estacionamentoId } = useUserRole();
   const [mensalistas, setMensalistas] = useState<Mensalista[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

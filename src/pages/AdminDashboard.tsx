@@ -54,7 +54,7 @@ export default function AdminDashboard() {
     if (error) {
       toast.error('Erro ao carregar dados');
     } else {
-      setEstacionamentos(data || []);
+      setEstacionamentos((data as Estacionamento[]) || []);
     }
     setLoading(false);
   };
@@ -114,7 +114,7 @@ export default function AdminDashboard() {
             endereco: form.endereco,
             horario_funcionamento: form.horario_funcionamento,
             logo_url: form.logo_url || null
-          })
+          } as any)
           .eq('id', editing.id);
 
         if (error) throw error;
@@ -132,7 +132,7 @@ export default function AdminDashboard() {
             horario_funcionamento: form.horario_funcionamento,
             logo_url: form.logo_url || null,
             status: 'ativo'
-          });
+          } as any);
 
         if (error) throw error;
         toast.success('Estacionamento cadastrado com sucesso!');

@@ -1,6 +1,14 @@
+import { useState, useRef } from 'react';
 import { Search, Clock, DollarSign, AlertTriangle, Copy, Check, Printer } from 'lucide-react';
 import { Receipt } from './Receipt';
-import { useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda } from '@/lib/parking';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
