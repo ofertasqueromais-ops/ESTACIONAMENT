@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   );
 
   const users = [
-    { email: "master@pereira.com", password: "191919", role: "master" },
+    { email: "mestre@pereira.com", password: "191919", role: "mestre" },
     { email: "admin@pereira.com", password: "191919", role: "admin" },
     { email: "caixa@pereira.com", password: "191919", role: "staff" },
   ];
