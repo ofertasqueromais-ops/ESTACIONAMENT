@@ -126,7 +126,8 @@ export default function AdminDashboard() {
             intervalo_cobranca: form.intervalo_cobranca,
             tolerancia_minutos: form.tolerancia_minutos,
             valor_hora: form.valor_hora,
-            valor_maximo: form.valor_maximo
+            valor_maximo: form.valor_maximo,
+            valor_intervalo: form.valor_intervalo
           } as any)
           .eq('id', editing.id);
 
@@ -148,7 +149,8 @@ export default function AdminDashboard() {
             intervalo_cobranca: form.intervalo_cobranca,
             tolerancia_minutos: form.tolerancia_minutos,
             valor_hora: form.valor_hora,
-            valor_maximo: form.valor_maximo
+            valor_maximo: form.valor_maximo,
+            valor_intervalo: form.valor_intervalo
           } as any);
 
         if (error) throw error;

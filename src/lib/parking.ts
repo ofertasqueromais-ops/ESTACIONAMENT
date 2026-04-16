@@ -8,10 +8,11 @@ export interface PricingConfig {
   tolerancia_minutos?: number;
   valor_hora?: number;
   valor_maximo?: number;
+  valor_intervalo?: number;
 }
 
 export function calcularValor(tipo: string, entrada: Date, saida: Date, config?: PricingConfig): number {
-  const precoHora = config?.valor_hora ?? PRECO_HORA_DEFAULT;
+  const valorIntervalo = config?.valor_intervalo ?? config?.valor_hora ?? PRECO_HORA_DEFAULT;
   const valorMaximo = config?.valor_maximo ?? VALOR_MAXIMO_DEFAULT;
   const tolerancia = config?.tolerancia_minutos ?? TOLERANCIA_MINUTOS_DEFAULT;
   const intervalo = config?.intervalo_cobranca ?? '1hora';
@@ -24,17 +25,17 @@ export function calcularValor(tipo: string, entrada: Date, saida: Date, config?:
 
   const diffHours = diffMs / (1000 * 60 * 60);
   
-  // Arredonda para cima conforme intervalo
-  let horasCobradas: number;
+  // Conta quantos intervalos foram usados
+  let intervalos: number;
   if (intervalo === '15min') {
-    horasCobradas = Math.max(0.25, Math.ceil(diffHours * 4) / 4);
+    intervalos = Math.max(1, Math.ceil(diffMinutos / 15));
   } else if (intervalo === '30min') {
-    horasCobradas = Math.max(0.5, Math.ceil(diffHours * 2) / 2);
+    intervalos = Math.max(1, Math.ceil(diffMinutos / 30));
   } else {
-    horasCobradas = Math.max(1, Math.ceil(diffHours));
+    intervalos = Math.max(1, Math.ceil(diffHours));
   }
   
-  const valorCalculado = horasCobradas * precoHora;
+  const valorCalculado = intervalos * valorIntervalo;
   
   // Máximo configurável
   return Number(Math.min(valorCalculado, valorMaximo).toFixed(2));
