@@ -16,7 +16,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const fetchLogo = async () => {
-      let targetEmail = user?.email;
+      const targetEmail = user?.email;
       
       // Se estiver personificando, busca os dados daquela unidade
       if (isImpersonating && impersonatedEstacionamentoId) {

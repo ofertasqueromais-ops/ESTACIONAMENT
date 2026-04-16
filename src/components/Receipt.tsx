@@ -152,7 +152,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
             max-width: none !important;
             background: none !important;
           }
-          .print\:hidden {
+          .print\\:hidden {
             display: none !important;
           }
         }
