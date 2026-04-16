@@ -26,6 +26,11 @@ interface Estacionamento {
   tolerancia_minutos: number;
   valor_hora: number;
   valor_maximo: number;
+  tipo_cobranca: string;
+  valor_15_min: number;
+  valor_30_min: number;
+  valor_60_min: number;
+  valor_hora_adicional: number;
 }
 
 export default function AdminDashboard() {
@@ -48,7 +53,12 @@ export default function AdminDashboard() {
     tolerancia_minutos: 5,
     valor_hora: 4,
     valor_maximo: 20,
-    valor_intervalo: 4
+    valor_intervalo: 4,
+    tipo_cobranca: 'fixo',
+    valor_15_min: 0,
+    valor_30_min: 0,
+    valor_60_min: 0,
+    valor_hora_adicional: 0
   });
   const { startImpersonation } = useImpersonation();
   const navigate = useNavigate();
@@ -127,7 +137,12 @@ export default function AdminDashboard() {
             tolerancia_minutos: form.tolerancia_minutos,
             valor_hora: form.valor_hora,
             valor_maximo: form.valor_maximo,
-            valor_intervalo: form.valor_intervalo
+            valor_intervalo: form.valor_intervalo,
+            tipo_cobranca: form.tipo_cobranca,
+            valor_15_min: form.valor_15_min,
+            valor_30_min: form.valor_30_min,
+            valor_60_min: form.valor_60_min,
+            valor_hora_adicional: form.valor_hora_adicional
           } as any)
           .eq('id', editing.id);
 
@@ -150,7 +165,12 @@ export default function AdminDashboard() {
             tolerancia_minutos: form.tolerancia_minutos,
             valor_hora: form.valor_hora,
             valor_maximo: form.valor_maximo,
-            valor_intervalo: form.valor_intervalo
+            valor_intervalo: form.valor_intervalo,
+            tipo_cobranca: form.tipo_cobranca,
+            valor_15_min: form.valor_15_min,
+            valor_30_min: form.valor_30_min,
+            valor_60_min: form.valor_60_min,
+            valor_hora_adicional: form.valor_hora_adicional
           } as any);
 
         if (error) throw error;
@@ -217,7 +237,12 @@ export default function AdminDashboard() {
       tolerancia_minutos: est.tolerancia_minutos ?? 5,
       valor_hora: est.valor_hora ?? 4,
       valor_maximo: est.valor_maximo ?? 20,
-      valor_intervalo: (est as any).valor_intervalo ?? 4
+      valor_intervalo: (est as any).valor_intervalo ?? 4,
+      tipo_cobranca: est.tipo_cobranca || 'fixo',
+      valor_15_min: est.valor_15_min || 0,
+      valor_30_min: est.valor_30_min || 0,
+      valor_60_min: est.valor_60_min || 0,
+      valor_hora_adicional: est.valor_hora_adicional || 0
     });
     setDialogOpen(true);
   };
@@ -237,7 +262,12 @@ export default function AdminDashboard() {
       tolerancia_minutos: 5,
       valor_hora: 4,
       valor_maximo: 20,
-      valor_intervalo: 4
+      valor_intervalo: 4,
+      tipo_cobranca: 'fixo',
+      valor_15_min: 0,
+      valor_30_min: 0,
+      valor_60_min: 0,
+      valor_hora_adicional: 0
     });
     setDialogOpen(true);
   };
@@ -429,65 +459,130 @@ export default function AdminDashboard() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Intervalo de Cobrança</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { value: '15min', label: 'A cada 15 min' },
-                      { value: '30min', label: 'A cada 30 min' },
-                      { value: '1hora', label: 'A cada 1 hora' },
-                    ] as const).map(opt => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, intervalo_cobranca: opt.value }))}
-                        className={`p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
-                          form.intervalo_cobranca === opt.value
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border hover:border-muted-foreground'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                  <label className="text-sm font-medium">Modo de Cobrança</label>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, tipo_cobranca: 'fixo' }))}
+                      className={`p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
+                        form.tipo_cobranca === 'fixo'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:border-muted-foreground'
+                      }`}
+                    >
+                      Preço Único / Intervalo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, tipo_cobranca: 'progressivo' }))}
+                      className={`p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
+                        form.tipo_cobranca === 'progressivo'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:border-muted-foreground'
+                      }`}
+                    >
+                      Tabela Progressiva
+                    </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      {form.intervalo_cobranca === '15min' ? 'R$ / 15 min' : form.intervalo_cobranca === '30min' ? 'R$ / 30 min' : 'R$ / Hora'}
-                    </label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      value={form.valor_intervalo}
-                      onChange={e => setForm(f => ({ ...f, valor_intervalo: Number(e.target.value) }))}
-                      className="rounded-xl h-11"
-                    />
+                {form.tipo_cobranca === 'progressivo' ? (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Até 15 min (R$)</label>
+                        <Input type="number" min={0} step={0.5} value={form.valor_15_min} onChange={e => setForm(f => ({ ...f, valor_15_min: Number(e.target.value) }))} className="rounded-xl h-11" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Até 30 min (R$)</label>
+                        <Input type="number" min={0} step={0.5} value={form.valor_30_min} onChange={e => setForm(f => ({ ...f, valor_30_min: Number(e.target.value) }))} className="rounded-xl h-11" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Até 1 hora (R$)</label>
+                        <Input type="number" min={0} step={0.5} value={form.valor_60_min} onChange={e => setForm(f => ({ ...f, valor_60_min: Number(e.target.value) }))} className="rounded-xl h-11" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Hora Adicional (R$)</label>
+                        <Input type="number" min={0} step={0.5} value={form.valor_hora_adicional} onChange={e => setForm(f => ({ ...f, valor_hora_adicional: Number(e.target.value) }))} placeholder="Ex: 5.00" className="rounded-xl h-11" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-sm font-medium">Tolerância (min)</label>
+                         <Input type="number" min={0} value={form.tolerancia_minutos} onChange={e => setForm(f => ({ ...f, tolerancia_minutos: Number(e.target.value) }))} className="rounded-xl h-11" />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-sm font-medium">Máximo Diário (R$)</label>
+                         <Input type="number" min={0} step={1} value={form.valor_maximo} onChange={e => setForm(f => ({ ...f, valor_maximo: Number(e.target.value) }))} className="rounded-xl h-11" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Tolerância (min)</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.tolerancia_minutos}
-                      onChange={e => setForm(f => ({ ...f, tolerancia_minutos: Number(e.target.value) }))}
-                      className="rounded-xl h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Máximo (R$)</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={form.valor_maximo}
-                      onChange={e => setForm(f => ({ ...f, valor_maximo: Number(e.target.value) }))}
-                      className="rounded-xl h-11"
-                    />
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                      <label className="text-sm font-medium">Intervalo de Cobrança</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { value: '15min', label: 'A cada 15 min' },
+                          { value: '30min', label: 'A cada 30 min' },
+                          { value: '1hora', label: 'A cada 1 hora' },
+                        ] as const).map(opt => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, intervalo_cobranca: opt.value }))}
+                            className={`p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
+                              form.intervalo_cobranca === opt.value
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border hover:border-muted-foreground'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          {form.intervalo_cobranca === '15min' ? 'R$ / 15 min' : form.intervalo_cobranca === '30min' ? 'R$ / 30 min' : 'R$ / Hora'}
+                        </label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          value={form.valor_intervalo}
+                          onChange={e => setForm(f => ({ ...f, valor_intervalo: Number(e.target.value) }))}
+                          className="rounded-xl h-11"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Tolerância (min)</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={form.tolerancia_minutos}
+                          onChange={e => setForm(f => ({ ...f, tolerancia_minutos: Number(e.target.value) }))}
+                          className="rounded-xl h-11"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Máximo (R$)</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={form.valor_maximo}
+                          onChange={e => setForm(f => ({ ...f, valor_maximo: Number(e.target.value) }))}
+                          className="rounded-xl h-11"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -28,9 +28,14 @@ export type Database = {
           responsavel: string
           status: string
           telefone: string | null
+          tipo_cobranca: string | null
           tolerancia_minutos: number
           updated_at: string
+          valor_15_min: number | null
+          valor_30_min: number | null
+          valor_60_min: number | null
           valor_hora: number
+          valor_hora_adicional: number | null
           valor_intervalo: number
           valor_maximo: number
         }
@@ -47,9 +52,14 @@ export type Database = {
           responsavel: string
           status?: string
           telefone?: string | null
+          tipo_cobranca?: string | null
           tolerancia_minutos?: number
           updated_at?: string
+          valor_15_min?: number | null
+          valor_30_min?: number | null
+          valor_60_min?: number | null
           valor_hora?: number
+          valor_hora_adicional?: number | null
           valor_intervalo?: number
           valor_maximo?: number
         }
@@ -66,9 +76,14 @@ export type Database = {
           responsavel?: string
           status?: string
           telefone?: string | null
+          tipo_cobranca?: string | null
           tolerancia_minutos?: number
           updated_at?: string
+          valor_15_min?: number | null
+          valor_30_min?: number | null
+          valor_60_min?: number | null
           valor_hora?: number
+          valor_hora_adicional?: number | null
           valor_intervalo?: number
           valor_maximo?: number
         }

@@ -9,6 +9,11 @@ export interface PricingConfig {
   valor_hora?: number;
   valor_maximo?: number;
   valor_intervalo?: number;
+  tipo_cobranca?: string;
+  valor_15_min?: number;
+  valor_30_min?: number;
+  valor_60_min?: number;
+  valor_hora_adicional?: number;
 }
 
 export function calcularValor(tipo: string, entrada: Date, saida: Date, config?: PricingConfig): number {
@@ -23,6 +28,21 @@ export function calcularValor(tipo: string, entrada: Date, saida: Date, config?:
   // Tolerância configurável
   if (diffMinutos <= tolerancia) return 0;
 
+  // Lógica Progressiva Tabela de Preços
+  if (config?.tipo_cobranca === 'progressivo') {
+    if (diffMinutos <= 15) return Number(Math.min(config.valor_15_min || 0, valorMaximo).toFixed(2));
+    if (diffMinutos <= 30) return Number(Math.min(config.valor_30_min || 0, valorMaximo).toFixed(2));
+    if (diffMinutos <= 60) return Number(Math.min(config.valor_60_min || 0, valorMaximo).toFixed(2));
+
+    // Mais de 1h
+    const horasExtras = Math.ceil((diffMinutos - 60) / 60);
+    const valorAdicional = horasExtras * (config.valor_hora_adicional || 0);
+    const valorTotal = (config.valor_60_min || 0) + valorAdicional;
+
+    return Number(Math.min(valorTotal, valorMaximo).toFixed(2));
+  }
+
+  // Lógica Clássica Intervalo (Fixo)
   const diffHours = diffMs / (1000 * 60 * 60);
   
   // Conta quantos intervalos foram usados
