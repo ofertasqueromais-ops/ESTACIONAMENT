@@ -31,6 +31,7 @@ export type Database = {
           tolerancia_minutos: number
           updated_at: string
           valor_hora: number
+          valor_intervalo: number
           valor_maximo: number
         }
         Insert: {
@@ -49,6 +50,7 @@ export type Database = {
           tolerancia_minutos?: number
           updated_at?: string
           valor_hora?: number
+          valor_intervalo?: number
           valor_maximo?: number
         }
         Update: {
@@ -67,6 +69,7 @@ export type Database = {
           tolerancia_minutos?: number
           updated_at?: string
           valor_hora?: number
+          valor_intervalo?: number
           valor_maximo?: number
         }
         Relationships: []
