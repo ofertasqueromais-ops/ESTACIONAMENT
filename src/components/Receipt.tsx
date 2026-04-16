@@ -29,7 +29,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
   const dataSaida = veiculo.saida ? new Date(veiculo.saida).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
   
   return (
-    <div ref={ref} className="receipt-container p-6 bg-white text-[#4A4A6A] font-mono text-sm max-w-[350px] mx-auto shadow-lg relative print:shadow-none print:p-0">
+    <div ref={ref} className="receipt-container p-4 bg-white text-[#000] font-mono text-[12px] leading-tight max-w-[300px] mx-auto shadow-lg relative print:shadow-none print:p-0">
       <div className="text-center space-y-1 mb-6">
         <h2 className="text-xl font-bold uppercase leading-tight">{estacionamento.nome}</h2>
         {estacionamento.cnpj && <p className="text-xs">{estacionamento.cnpj}</p>}
@@ -133,13 +133,14 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
-            max-width: 80mm;
-            padding: 10mm 5mm !important;
-            margin: 0 auto !important;
+            width: 58mm !important;
+            max-width: 58mm !important;
+            padding: 0 !important;
+            margin: 0 !important;
             box-shadow: none !important;
-            overflow: visible !important;
+            overflow: hidden !important;
             height: auto !important;
+            color: #000 !important;
           }
           /* Reset Radix UI / Shadcn UI Dialog positioning for print */
           div[role="dialog"], 
