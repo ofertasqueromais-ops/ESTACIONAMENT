@@ -1,24 +1,43 @@
-// Pricing config
-const PRECO_HORA = 4;
-const VALOR_MAXIMO = 20;
-const TOLERANCIA_MINUTOS = 5;
+// Default pricing config
+const PRECO_HORA_DEFAULT = 4;
+const VALOR_MAXIMO_DEFAULT = 20;
+const TOLERANCIA_MINUTOS_DEFAULT = 5;
 
-export function calcularValor(tipo: string, entrada: Date, saida: Date): number {
+export interface PricingConfig {
+  intervalo_cobranca?: string; // '15min' | '30min' | '1hora'
+  tolerancia_minutos?: number;
+  valor_hora?: number;
+  valor_maximo?: number;
+}
+
+export function calcularValor(tipo: string, entrada: Date, saida: Date, config?: PricingConfig): number {
+  const precoHora = config?.valor_hora ?? PRECO_HORA_DEFAULT;
+  const valorMaximo = config?.valor_maximo ?? VALOR_MAXIMO_DEFAULT;
+  const tolerancia = config?.tolerancia_minutos ?? TOLERANCIA_MINUTOS_DEFAULT;
+  const intervalo = config?.intervalo_cobranca ?? '1hora';
+
   const diffMs = saida.getTime() - entrada.getTime();
   const diffMinutos = diffMs / (1000 * 60);
 
-  // Tolerância de 5 minutos
-  if (diffMinutos <= TOLERANCIA_MINUTOS) return 0;
+  // Tolerância configurável
+  if (diffMinutos <= tolerancia) return 0;
 
   const diffHours = diffMs / (1000 * 60 * 60);
   
-  // Mínimo 1 hora, arredonda para cima em 30min
-  const horasCobradas = Math.max(1, Math.ceil(diffHours * 2) / 2);
+  // Arredonda para cima conforme intervalo
+  let horasCobradas: number;
+  if (intervalo === '15min') {
+    horasCobradas = Math.max(0.25, Math.ceil(diffHours * 4) / 4);
+  } else if (intervalo === '30min') {
+    horasCobradas = Math.max(0.5, Math.ceil(diffHours * 2) / 2);
+  } else {
+    horasCobradas = Math.max(1, Math.ceil(diffHours));
+  }
   
-  const valorCalculado = horasCobradas * PRECO_HORA;
+  const valorCalculado = horasCobradas * precoHora;
   
-  // Máximo R$20
-  return Number(Math.min(valorCalculado, VALOR_MAXIMO).toFixed(2));
+  // Máximo configurável
+  return Number(Math.min(valorCalculado, valorMaximo).toFixed(2));
 }
 
 export function formatarTempo(entrada: Date, saida: Date): string {

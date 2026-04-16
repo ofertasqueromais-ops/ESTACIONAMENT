@@ -22,12 +22,16 @@ export type Database = {
           endereco: string | null
           horario_funcionamento: string | null
           id: string
+          intervalo_cobranca: string
           logo_url: string | null
           nome: string
           responsavel: string
           status: string
           telefone: string | null
+          tolerancia_minutos: number
           updated_at: string
+          valor_hora: number
+          valor_maximo: number
         }
         Insert: {
           cnpj?: string | null
@@ -36,12 +40,16 @@ export type Database = {
           endereco?: string | null
           horario_funcionamento?: string | null
           id?: string
+          intervalo_cobranca?: string
           logo_url?: string | null
           nome: string
           responsavel: string
           status?: string
           telefone?: string | null
+          tolerancia_minutos?: number
           updated_at?: string
+          valor_hora?: number
+          valor_maximo?: number
         }
         Update: {
           cnpj?: string | null
@@ -50,12 +58,16 @@ export type Database = {
           endereco?: string | null
           horario_funcionamento?: string | null
           id?: string
+          intervalo_cobranca?: string
           logo_url?: string | null
           nome?: string
           responsavel?: string
           status?: string
           telefone?: string | null
+          tolerancia_minutos?: number
           updated_at?: string
+          valor_hora?: number
+          valor_maximo?: number
         }
         Relationships: []
       }

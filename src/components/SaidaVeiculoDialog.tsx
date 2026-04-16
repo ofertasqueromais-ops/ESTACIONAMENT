@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda } from '@/lib/parking';
+import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda, PricingConfig } from '@/lib/parking';
 import { toast } from 'sonner';
 
 interface Props {
@@ -46,10 +46,11 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const [mensalistaVencido, setMensalistaVencido] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [finalizado, setFinalizado] = useState(false);
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig>({});
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const agora = new Date();
-  const valor = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora) : 0;
+  const valor = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
   const tempo = veiculo ? formatarTempo(new Date(veiculo.entrada), agora) : '';
 
   const buscarVeiculo = async () => {
@@ -72,15 +73,23 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
 
     setVeiculo(data);
 
-    // Fetch estacionamento details
+    // Fetch estacionamento details + pricing config
     if (data.estacionamento_id) {
       const { data: est } = await supabase
         .from('estacionamentos')
-        .select('nome, cnpj, endereco, telefone, horario_funcionamento')
+        .select('nome, cnpj, endereco, telefone, horario_funcionamento, intervalo_cobranca, tolerancia_minutos, valor_hora, valor_maximo')
         .eq('id', data.estacionamento_id)
         .maybeSingle();
       
-      if (est) setEstacionamento(est);
+      if (est) {
+        setEstacionamento(est);
+        setPricingConfig({
+          intervalo_cobranca: (est as any).intervalo_cobranca,
+          tolerancia_minutos: (est as any).tolerancia_minutos,
+          valor_hora: (est as any).valor_hora,
+          valor_maximo: (est as any).valor_maximo,
+        });
+      }
     }
   };
 
@@ -89,7 +98,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     setLoading(true);
     try {
       const saida = new Date();
-      const valorFinal = veiculo.mensalista && !mensalistaVencido ? 0 : calcularValor(veiculo.tipo, new Date(veiculo.entrada), saida);
+      const valorFinal = veiculo.mensalista && !mensalistaVencido ? 0 : calcularValor(veiculo.tipo, new Date(veiculo.entrada), saida, pricingConfig);
 
       const { error: updateErr } = await supabase
         .from('veiculos')
