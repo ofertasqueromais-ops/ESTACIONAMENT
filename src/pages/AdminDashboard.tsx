@@ -214,7 +214,8 @@ export default function AdminDashboard() {
       intervalo_cobranca: est.intervalo_cobranca || '1hora',
       tolerancia_minutos: est.tolerancia_minutos ?? 5,
       valor_hora: est.valor_hora ?? 4,
-      valor_maximo: est.valor_maximo ?? 20
+      valor_maximo: est.valor_maximo ?? 20,
+      valor_intervalo: (est as any).valor_intervalo ?? 4
     });
     setDialogOpen(true);
   };
@@ -233,7 +234,8 @@ export default function AdminDashboard() {
       intervalo_cobranca: '1hora',
       tolerancia_minutos: 5,
       valor_hora: 4,
-      valor_maximo: 20
+      valor_maximo: 20,
+      valor_intervalo: 4
     });
     setDialogOpen(true);
   };
