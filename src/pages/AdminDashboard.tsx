@@ -22,6 +22,10 @@ interface Estacionamento {
   horario_funcionamento: string | null;
   status: string;
   created_at: string;
+  intervalo_cobranca: string;
+  tolerancia_minutos: number;
+  valor_hora: number;
+  valor_maximo: number;
 }
 
 export default function AdminDashboard() {
@@ -39,7 +43,11 @@ export default function AdminDashboard() {
     logo_url: '',
     cnpj: '',
     endereco: '',
-    horario_funcionamento: ''
+    horario_funcionamento: '',
+    intervalo_cobranca: '1hora',
+    tolerancia_minutos: 5,
+    valor_hora: 4,
+    valor_maximo: 20
   });
   const { startImpersonation } = useImpersonation();
   const navigate = useNavigate();
@@ -113,7 +121,11 @@ export default function AdminDashboard() {
             cnpj: form.cnpj,
             endereco: form.endereco,
             horario_funcionamento: form.horario_funcionamento,
-            logo_url: form.logo_url || null
+            logo_url: form.logo_url || null,
+            intervalo_cobranca: form.intervalo_cobranca,
+            tolerancia_minutos: form.tolerancia_minutos,
+            valor_hora: form.valor_hora,
+            valor_maximo: form.valor_maximo
           } as any)
           .eq('id', editing.id);
 
@@ -131,7 +143,11 @@ export default function AdminDashboard() {
             endereco: form.endereco,
             horario_funcionamento: form.horario_funcionamento,
             logo_url: form.logo_url || null,
-            status: 'ativo'
+            status: 'ativo',
+            intervalo_cobranca: form.intervalo_cobranca,
+            tolerancia_minutos: form.tolerancia_minutos,
+            valor_hora: form.valor_hora,
+            valor_maximo: form.valor_maximo
           } as any);
 
         if (error) throw error;
@@ -193,7 +209,11 @@ export default function AdminDashboard() {
       logo_url: est.logo_url || '',
       cnpj: est.cnpj || '',
       endereco: est.endereco || '',
-      horario_funcionamento: est.horario_funcionamento || ''
+      horario_funcionamento: est.horario_funcionamento || '',
+      intervalo_cobranca: est.intervalo_cobranca || '1hora',
+      tolerancia_minutos: est.tolerancia_minutos ?? 5,
+      valor_hora: est.valor_hora ?? 4,
+      valor_maximo: est.valor_maximo ?? 20
     });
     setDialogOpen(true);
   };
@@ -208,7 +228,11 @@ export default function AdminDashboard() {
       logo_url: '',
       cnpj: '',
       endereco: '',
-      horario_funcionamento: ''
+      horario_funcionamento: '',
+      intervalo_cobranca: '1hora',
+      tolerancia_minutos: 5,
+      valor_hora: 4,
+      valor_maximo: 20
     });
     setDialogOpen(true);
   };
@@ -391,6 +415,74 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             )}
+
+            {/* Configuração de Cobrança */}
+            <div className="border-t pt-5 mt-2">
+              <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5 mb-4">
+                💰 Configuração de Cobrança
+              </h3>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Intervalo de Cobrança</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: '15min', label: 'A cada 15 min' },
+                      { value: '30min', label: 'A cada 30 min' },
+                      { value: '1hora', label: 'A cada 1 hora' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, intervalo_cobranca: opt.value }))}
+                        className={`p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
+                          form.intervalo_cobranca === opt.value
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border hover:border-muted-foreground'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Valor/Hora (R$)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={form.valor_hora}
+                      onChange={e => setForm(f => ({ ...f, valor_hora: Number(e.target.value) }))}
+                      className="rounded-xl h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Tolerância (min)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.tolerancia_minutos}
+                      onChange={e => setForm(f => ({ ...f, tolerancia_minutos: Number(e.target.value) }))}
+                      className="rounded-xl h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Máximo (R$)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={form.valor_maximo}
+                      onChange={e => setForm(f => ({ ...f, valor_maximo: Number(e.target.value) }))}
+                      className="rounded-xl h-11"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter className="mt-2">
             <Button variant="ghost" onClick={() => setDialogOpen(false)} className="rounded-xl h-11">Cancelar</Button>
