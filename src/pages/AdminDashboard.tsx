@@ -47,7 +47,8 @@ export default function AdminDashboard() {
     intervalo_cobranca: '1hora',
     tolerancia_minutos: 5,
     valor_hora: 4,
-    valor_maximo: 20
+    valor_maximo: 20,
+    valor_intervalo: 4
   });
   const { startImpersonation } = useImpersonation();
   const navigate = useNavigate();
@@ -125,7 +126,8 @@ export default function AdminDashboard() {
             intervalo_cobranca: form.intervalo_cobranca,
             tolerancia_minutos: form.tolerancia_minutos,
             valor_hora: form.valor_hora,
-            valor_maximo: form.valor_maximo
+            valor_maximo: form.valor_maximo,
+            valor_intervalo: form.valor_intervalo
           } as any)
           .eq('id', editing.id);
 
@@ -147,7 +149,8 @@ export default function AdminDashboard() {
             intervalo_cobranca: form.intervalo_cobranca,
             tolerancia_minutos: form.tolerancia_minutos,
             valor_hora: form.valor_hora,
-            valor_maximo: form.valor_maximo
+            valor_maximo: form.valor_maximo,
+            valor_intervalo: form.valor_intervalo
           } as any);
 
         if (error) throw error;
@@ -213,7 +216,8 @@ export default function AdminDashboard() {
       intervalo_cobranca: est.intervalo_cobranca || '1hora',
       tolerancia_minutos: est.tolerancia_minutos ?? 5,
       valor_hora: est.valor_hora ?? 4,
-      valor_maximo: est.valor_maximo ?? 20
+      valor_maximo: est.valor_maximo ?? 20,
+      valor_intervalo: (est as any).valor_intervalo ?? 4
     });
     setDialogOpen(true);
   };
@@ -232,7 +236,8 @@ export default function AdminDashboard() {
       intervalo_cobranca: '1hora',
       tolerancia_minutos: 5,
       valor_hora: 4,
-      valor_maximo: 20
+      valor_maximo: 20,
+      valor_intervalo: 4
     });
     setDialogOpen(true);
   };
@@ -449,13 +454,15 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Valor/Hora (R$)</label>
+                    <label className="text-sm font-medium">
+                      {form.intervalo_cobranca === '15min' ? 'R$ / 15 min' : form.intervalo_cobranca === '30min' ? 'R$ / 30 min' : 'R$ / Hora'}
+                    </label>
                     <Input
                       type="number"
                       min={0}
                       step={0.5}
-                      value={form.valor_hora}
-                      onChange={e => setForm(f => ({ ...f, valor_hora: Number(e.target.value) }))}
+                      value={form.valor_intervalo}
+                      onChange={e => setForm(f => ({ ...f, valor_intervalo: Number(e.target.value) }))}
                       className="rounded-xl h-11"
                     />
                   </div>

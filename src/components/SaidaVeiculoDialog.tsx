@@ -77,7 +77,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     if (data.estacionamento_id) {
       const { data: est } = await supabase
         .from('estacionamentos')
-        .select('nome, cnpj, endereco, telefone, horario_funcionamento, intervalo_cobranca, tolerancia_minutos, valor_hora, valor_maximo')
+        .select('nome, cnpj, endereco, telefone, horario_funcionamento, intervalo_cobranca, tolerancia_minutos, valor_hora, valor_maximo, valor_intervalo')
         .eq('id', data.estacionamento_id)
         .maybeSingle();
       
@@ -88,6 +88,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
           tolerancia_minutos: (est as any).tolerancia_minutos,
           valor_hora: (est as any).valor_hora,
           valor_maximo: (est as any).valor_maximo,
+          valor_intervalo: (est as any).valor_intervalo,
         });
       }
     }
