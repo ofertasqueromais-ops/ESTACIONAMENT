@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda, PricingConfig } from '@/lib/parking';
+import { imprimirReciboHtml } from '@/lib/printReceipt';
 import { toast } from 'sonner';
 
 interface Props {
