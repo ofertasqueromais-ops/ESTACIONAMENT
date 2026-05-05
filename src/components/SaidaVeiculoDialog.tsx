@@ -53,9 +53,10 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const valor = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
   const tempo = veiculo ? formatarTempo(new Date(veiculo.entrada), agora) : '';
 
-  const buscarVeiculo = async () => {
+  const buscarVeiculo = useCallback(async (placaArg?: string) => {
     if (!user) return;
-    const placaFormatada = formatarPlaca(placa);
+    const placaFormatada = formatarPlaca(placaArg ?? placa);
+    if (!placaFormatada) return;
     
     const { data, error } = await supabase
       .from('veiculos')
@@ -97,7 +98,16 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
         });
       }
     }
-  };
+  }, [user, placa]);
+
+  // Auto-busca quando o diálogo abre com uma placa pré-definida (clique no card do pátio)
+  useEffect(() => {
+    if (open && placaInicial) {
+      setPlaca(placaInicial);
+      buscarVeiculo(placaInicial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, placaInicial]);
 
   const finalizar = async () => {
     if (!user || !veiculo) return;
