@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Clock, DollarSign, AlertTriangle, Copy, Check, Printer } from 'lucide-react';
 import { Receipt } from './Receipt';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -53,9 +53,10 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const valor = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
   const tempo = veiculo ? formatarTempo(new Date(veiculo.entrada), agora) : '';
 
-  const buscarVeiculo = async () => {
+  const buscarVeiculo = useCallback(async (placaArg?: string) => {
     if (!user) return;
-    const placaFormatada = formatarPlaca(placa);
+    const placaFormatada = formatarPlaca(placaArg ?? placa);
+    if (!placaFormatada) return;
     
     const { data, error } = await supabase
       .from('veiculos')
@@ -97,7 +98,16 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
         });
       }
     }
-  };
+  }, [user, placa]);
+
+  // Auto-busca quando o diálogo abre com uma placa pré-definida (clique no card do pátio)
+  useEffect(() => {
+    if (open && placaInicial) {
+      setPlaca(placaInicial);
+      buscarVeiculo(placaInicial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, placaInicial]);
 
   const finalizar = async () => {
     if (!user || !veiculo) return;
@@ -236,7 +246,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
                   maxLength={7}
                   onKeyDown={(e) => e.key === 'Enter' && buscarVeiculo()}
                 />
-                <Button onClick={buscarVeiculo} size="icon">
+                <Button onClick={() => buscarVeiculo()} size="icon">
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
