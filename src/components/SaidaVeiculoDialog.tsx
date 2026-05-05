@@ -246,7 +246,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
                   maxLength={7}
                   onKeyDown={(e) => e.key === 'Enter' && buscarVeiculo()}
                 />
-                <Button onClick={buscarVeiculo} size="icon">
+                <Button onClick={() => buscarVeiculo()} size="icon">
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
