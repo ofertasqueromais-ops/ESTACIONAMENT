@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda, PricingConfig } from '@/lib/parking';
+import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
 import { toast } from 'sonner';
 
 interface Props {
@@ -47,6 +48,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const [copiado, setCopiado] = useState(false);
   const [finalizado, setFinalizado] = useState(false);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>({});
+  const [isBluetoothConnected, setIsBluetoothConnected] = useState(bluetoothPrinter.isConnected());
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const agora = new Date();
@@ -138,6 +140,31 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     window.print();
   };
 
+  const handleBluetoothPrint = async () => {
+    if (!veiculo) return;
+    
+    try {
+      await bluetoothPrinter.printReceipt({
+        estacionamento: estacionamento || { nome: 'Estacionamento' },
+        veiculo: {
+          ...veiculo,
+          id: veiculo.id,
+          placa: veiculo.placa,
+          entrada: new Date(veiculo.entrada).toLocaleString('pt-BR'),
+          saida: new Date().toLocaleString('pt-BR'),
+          tempo,
+          valor: formatarMoeda(valor),
+          formaPagamento: veiculo.mensalista && !mensalistaVencido ? '' : formaPagamento,
+          mensalista: veiculo.mensalista && !mensalistaVencido
+        }
+      });
+      toast.success("Recibo enviado para impressora!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Erro ao imprimir");
+    }
+  };
+
   const handleClose = (o: boolean) => {
     if (!o) {
       setPlaca('');
@@ -204,14 +231,25 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Button onClick={() => window.print()} variant="outline" className="gap-2 h-11 border-2">
-                <Printer className="w-4 h-4" /> Imprimir
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button onClick={() => window.print()} variant="outline" className="w-full gap-2 h-11 border-2">
+                <Printer className="w-4 h-4" /> Imprimir (Navegador)
               </Button>
-              <Button onClick={() => handleClose(false)} className="h-11 shadow-lg shadow-primary/20">
+              {isBluetoothConnected ? (
+                <Button onClick={handleBluetoothPrint} className="w-full gap-2 h-11 shadow-lg shadow-primary/20 bg-primary">
+                  <Printer className="w-4 h-4" /> Imprimir (Bluetooth)
+                </Button>
+              ) : (
+                <Button onClick={() => handleClose(false)} className="w-full h-11 shadow-lg shadow-primary/20">
+                  Fechar
+                </Button>
+              )}
+            </div>
+            {isBluetoothConnected && (
+              <Button onClick={() => handleClose(false)} variant="ghost" className="w-full mt-2">
                 Fechar
               </Button>
-            </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

@@ -10,6 +10,7 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { formatarMoeda, formatarTempo, gerarComprovante } from '@/lib/parking';
+import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
 
 interface VeiculoFinalizado {
   id: string;
@@ -44,6 +45,8 @@ export default function Recibos() {
   const [selectedVeiculo, setSelectedVeiculo] = useState<VeiculoFinalizado | null>(null);
   const [estacionamento, setEstacionamento] = useState<Estacionamento | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isBluetoothConnected, setIsBluetoothConnected] = useState(bluetoothPrinter.isConnected());
+  const [isConnectingBluetooth, setIsConnectingBluetooth] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -92,11 +95,70 @@ export default function Recibos() {
     setIsPrintModalOpen(true);
   };
 
+  const handleConnectBluetooth = async () => {
+    try {
+      setIsConnectingBluetooth(true);
+      await bluetoothPrinter.connect();
+      setIsBluetoothConnected(true);
+      toast.success("Impressora conectada com sucesso!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Erro ao conectar impressora");
+    } finally {
+      setIsConnectingBluetooth(false);
+    }
+  };
+
+  const handleDisconnectBluetooth = () => {
+    bluetoothPrinter.disconnect();
+    setIsBluetoothConnected(false);
+    toast.info("Impressora desconectada");
+  };
+
+  const handleBluetoothPrint = async () => {
+    if (!selectedVeiculo) return;
+    
+    try {
+      const veiculoDados = {
+        ...selectedVeiculo,
+        entrada: new Date(selectedVeiculo.entrada).toLocaleString('pt-BR'),
+        saida: new Date(selectedVeiculo.saida).toLocaleString('pt-BR'),
+        tempo: formatarTempo(new Date(selectedVeiculo.entrada), new Date(selectedVeiculo.saida)),
+        formaPagamento: selectedVeiculo.valor > 0 ? 'Confirmado' : '',
+        valor: formatarMoeda(selectedVeiculo.valor || 0)
+      };
+
+      await bluetoothPrinter.printReceipt({
+        estacionamento: estacionamento || { nome: 'Estacionamento' },
+        veiculo: veiculoDados
+      });
+      
+      toast.success("Recibo enviado para impressora!");
+      setIsPrintModalOpen(false);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Erro ao imprimir");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold">Recibos</h1>
-        <p className="text-muted-foreground text-sm">Consulte e reenvie comprovantes</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-heading font-bold">Recibos</h1>
+          <p className="text-muted-foreground text-sm">Consulte e reenvie comprovantes</p>
+        </div>
+        <div>
+          {isBluetoothConnected ? (
+            <Button variant="outline" className="border-success text-success hover:bg-success/10 hover:text-success" onClick={handleDisconnectBluetooth}>
+              <Printer className="w-4 h-4 mr-2" /> Impressora Conectada
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={handleConnectBluetooth} disabled={isConnectingBluetooth}>
+              <Printer className="w-4 h-4 mr-2" /> {isConnectingBluetooth ? 'Conectando...' : 'Conectar Impressora Bluetooth'}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -187,9 +249,20 @@ export default function Recibos() {
                   }}
                 />
               </div>
-              <Button onClick={() => window.print()} className="w-full gap-2 h-12 shadow-lg shadow-primary/20">
-                <Printer className="w-5 h-5" /> Imprimir Recibo
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button onClick={() => window.print()} variant="outline" className="w-full gap-2 h-12">
+                  <Printer className="w-5 h-5" /> Imprimir (Navegador)
+                </Button>
+                {isBluetoothConnected ? (
+                  <Button onClick={handleBluetoothPrint} className="w-full gap-2 h-12 shadow-lg shadow-primary/20 bg-primary">
+                    <Printer className="w-5 h-5" /> Imprimir (Bluetooth)
+                  </Button>
+                ) : (
+                  <Button onClick={handleConnectBluetooth} className="w-full gap-2 h-12 shadow-lg shadow-primary/20 bg-primary">
+                    <Printer className="w-5 h-5" /> Conectar Bluetooth
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
