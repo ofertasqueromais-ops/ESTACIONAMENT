@@ -116,35 +116,45 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
-            margin: 0;
-            size: auto;
+            margin: 0mm;
+            size: 58mm auto;
           }
-          body {
-            margin: 0;
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            width: 58mm !important;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
           .receipt-container, .receipt-container * {
-            visibility: visible;
+            visibility: visible !important;
+            color: #000 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
           }
           .receipt-container {
-            position: absolute;
-            left: 0;
-            top: 0;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 58mm !important;
             max-width: 58mm !important;
-            padding: 0 !important;
+            padding: 2mm !important;
             margin: 0 !important;
-            box-shadow: none !important;
-            overflow: hidden !important;
-            height: auto !important;
-            color: #000 !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 11px !important;
+            line-height: 1.2 !important;
+            page-break-after: avoid;
+            page-break-inside: avoid;
           }
           /* Reset Radix UI / Shadcn UI Dialog positioning for print */
-          div[role="dialog"], 
-          div[data-state="open"] {
+          div[role="dialog"],
+          div[data-state="open"],
+          [data-radix-portal] {
             position: static !important;
             transform: none !important;
             padding: 0 !important;
@@ -152,6 +162,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
             width: auto !important;
             max-width: none !important;
             background: none !important;
+            inset: auto !important;
           }
           .print\\:hidden {
             display: none !important;
