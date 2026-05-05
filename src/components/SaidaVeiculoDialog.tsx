@@ -273,7 +273,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Button onClick={() => window.print()} variant="outline" className="gap-2 h-11 border-2">
+              <Button onClick={imprimirRecibo} variant="outline" className="gap-2 h-11 border-2">
                 <Printer className="w-4 h-4" /> Imprimir
               </Button>
               <Button onClick={() => handleClose(false)} className="h-11 shadow-lg shadow-primary/20">
