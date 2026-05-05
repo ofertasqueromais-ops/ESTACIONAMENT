@@ -14,19 +14,22 @@ interface ReceiptProps {
     placa: string;
     marca?: string | null;
     modelo?: string | null;
+    tipo?: string;
     entrada: string;
     saida?: string | null;
-    tempo: string;
-    valor: number;
+    tempo?: string;
+    valor?: number;
     formaPagamento?: string;
     mensalista?: boolean;
   };
+  tipo?: 'entrada' | 'saida';
 }
 
-export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacionamento, veiculo }, ref) => {
+export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacionamento, veiculo, tipo = 'saida' }, ref) => {
   const ticketId = veiculo.id.split('-')[0].toUpperCase();
   const dataEntrada = new Date(veiculo.entrada).toLocaleString('pt-BR');
   const dataSaida = veiculo.saida ? new Date(veiculo.saida).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+  const isEntrada = tipo === 'entrada';
   
   return (
     <div ref={ref} className="receipt-container p-4 bg-white text-[#000] font-mono text-[12px] leading-tight max-w-[300px] mx-auto shadow-lg relative print:shadow-none print:p-0">
@@ -39,7 +42,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
       </div>
 
       <div className="text-center border-y-2 border-dashed border-gray-300 py-2 mb-4">
-        <h3 className="text-lg font-bold tracking-[0.2em] uppercase">RECIBO</h3>
+        <h3 className="text-lg font-bold tracking-[0.2em] uppercase">{isEntrada ? 'COMPROVANTE DE ENTRADA' : 'RECIBO DE SAÍDA'}</h3>
       </div>
 
       <div className="space-y-1 mb-6">
@@ -51,6 +54,12 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
           <span className="font-bold">Placa</span>
           <span className="font-bold tracking-wider">{veiculo.placa}</span>
         </div>
+        {veiculo.tipo && (
+          <div className="flex justify-between items-center">
+            <span className="font-bold">Tipo</span>
+            <span className="capitalize">{veiculo.tipo}</span>
+          </div>
+        )}
         {veiculo.marca && (
           <div className="flex justify-between items-center">
             <span className="font-bold">Marca</span>
@@ -63,36 +72,47 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
             <span>{veiculo.modelo}</span>
           </div>
         )}
-        
+
         <div className="mt-4 pt-4 border-t border-gray-100 space-y-1">
           <div className="flex justify-between items-center">
             <span className="font-bold text-xs uppercase">Entrada</span>
             <span className="text-xs">{dataEntrada}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-xs uppercase">Saída</span>
-            <span className="text-xs">{dataSaida}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-xs uppercase">Permanência</span>
-            <span>{veiculo.tempo}</span>
-          </div>
+          {!isEntrada && (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-xs uppercase">Saída</span>
+                <span className="text-xs">{dataSaida}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-xs uppercase">Permanência</span>
+                <span>{veiculo.tempo}</span>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-100 space-y-1">
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-xs uppercase">Tabela de preço</span>
-            <span className="text-xs">Periodo Integral</span>
+        {!isEntrada ? (
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-xs uppercase">Tabela de preço</span>
+              <span className="text-xs">Periodo Integral</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-xs uppercase">Forma de pagamento</span>
+              <span className="capitalize">{veiculo.formaPagamento || 'Dinheiro'}</span>
+            </div>
+            <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t-2 border-dashed border-gray-200">
+              <span className="font-bold">Total</span>
+              <span className="font-bold">{veiculo.mensalista ? 'GRÁTIS' : formatarMoeda(veiculo.valor || 0)}</span>
+            </div>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-xs uppercase">Forma de pagamento</span>
-            <span className="capitalize">{veiculo.formaPagamento || 'Dinheiro'}</span>
+        ) : (
+          <div className="mt-4 pt-3 border-t border-gray-100 text-center text-xs">
+            <p className="font-bold uppercase">Guarde este comprovante</p>
+            <p>Apresente na saída do veículo</p>
           </div>
-          <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t-2 border-dashed border-gray-200">
-            <span className="font-bold">Total</span>
-            <span className="font-bold">{veiculo.mensalista ? 'GRÁTIS' : formatarMoeda(veiculo.valor)}</span>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="text-center text-[10px] text-gray-500 mt-8 mb-4 italic">
@@ -116,35 +136,45 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
-            margin: 0;
-            size: auto;
+            margin: 0mm;
+            size: 58mm auto;
           }
-          body {
-            margin: 0;
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            width: 58mm !important;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
           .receipt-container, .receipt-container * {
-            visibility: visible;
+            visibility: visible !important;
+            color: #000 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
           }
           .receipt-container {
-            position: absolute;
-            left: 0;
-            top: 0;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 58mm !important;
             max-width: 58mm !important;
-            padding: 0 !important;
+            padding: 2mm !important;
             margin: 0 !important;
-            box-shadow: none !important;
-            overflow: hidden !important;
-            height: auto !important;
-            color: #000 !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 11px !important;
+            line-height: 1.2 !important;
+            page-break-after: avoid;
+            page-break-inside: avoid;
           }
           /* Reset Radix UI / Shadcn UI Dialog positioning for print */
-          div[role="dialog"], 
-          div[data-state="open"] {
+          div[role="dialog"],
+          div[data-state="open"],
+          [data-radix-portal] {
             position: static !important;
             transform: none !important;
             padding: 0 !important;
@@ -152,6 +182,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
             width: auto !important;
             max-width: none !important;
             background: none !important;
+            inset: auto !important;
           }
           .print\\:hidden {
             display: none !important;

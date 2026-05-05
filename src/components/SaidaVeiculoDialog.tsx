@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Clock, DollarSign, AlertTriangle, Copy, Check, Printer } from 'lucide-react';
 import { Receipt } from './Receipt';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda, PricingConfig } from '@/lib/parking';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
+import { imprimirReciboHtml } from '@/lib/printReceipt';
 import { toast } from 'sonner';
 
 interface Props {
@@ -55,9 +56,10 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const valor = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
   const tempo = veiculo ? formatarTempo(new Date(veiculo.entrada), agora) : '';
 
-  const buscarVeiculo = async () => {
+  const buscarVeiculo = useCallback(async (placaArg?: string) => {
     if (!user) return;
-    const placaFormatada = formatarPlaca(placa);
+    const placaFormatada = formatarPlaca(placaArg ?? placa);
+    if (!placaFormatada) return;
     
     const { data, error } = await supabase
       .from('veiculos')
@@ -99,7 +101,16 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
         });
       }
     }
-  };
+  }, [user, placa]);
+
+  // Auto-busca quando o diálogo abre com uma placa pré-definida (clique no card do pátio)
+  useEffect(() => {
+    if (open && placaInicial) {
+      setPlaca(placaInicial);
+      buscarVeiculo(placaInicial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, placaInicial]);
 
   const finalizar = async () => {
     if (!user || !veiculo) return;
@@ -137,7 +148,11 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   };
 
   const imprimirRecibo = () => {
-    window.print();
+    if (!receiptRef.current) {
+      window.print();
+      return;
+    }
+    imprimirReciboHtml(receiptRef.current.innerHTML);
   };
 
   const handleBluetoothPrint = async () => {
@@ -195,7 +210,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
                   maxLength={7}
                   onKeyDown={(e) => e.key === 'Enter' && buscarVeiculo()}
                 />
-                <Button onClick={buscarVeiculo} size="icon">
+                <Button onClick={() => buscarVeiculo()} size="icon">
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
@@ -232,7 +247,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button onClick={() => window.print()} variant="outline" className="w-full gap-2 h-11 border-2">
+              <Button onClick={imprimirRecibo} variant="outline" className="w-full gap-2 h-11 border-2">
                 <Printer className="w-4 h-4" /> Imprimir (Navegador)
               </Button>
               {isBluetoothConnected ? (
