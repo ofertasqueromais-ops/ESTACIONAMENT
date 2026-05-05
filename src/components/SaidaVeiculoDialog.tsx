@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Clock, DollarSign, AlertTriangle, Copy, Check, Printer } from 'lucide-react';
 import { Receipt } from './Receipt';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
