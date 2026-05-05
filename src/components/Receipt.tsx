@@ -14,19 +14,22 @@ interface ReceiptProps {
     placa: string;
     marca?: string | null;
     modelo?: string | null;
+    tipo?: string;
     entrada: string;
     saida?: string | null;
-    tempo: string;
-    valor: number;
+    tempo?: string;
+    valor?: number;
     formaPagamento?: string;
     mensalista?: boolean;
   };
+  tipo?: 'entrada' | 'saida';
 }
 
-export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacionamento, veiculo }, ref) => {
+export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacionamento, veiculo, tipo = 'saida' }, ref) => {
   const ticketId = veiculo.id.split('-')[0].toUpperCase();
   const dataEntrada = new Date(veiculo.entrada).toLocaleString('pt-BR');
   const dataSaida = veiculo.saida ? new Date(veiculo.saida).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+  const isEntrada = tipo === 'entrada';
   
   return (
     <div ref={ref} className="receipt-container p-4 bg-white text-[#000] font-mono text-[12px] leading-tight max-w-[300px] mx-auto shadow-lg relative print:shadow-none print:p-0">
