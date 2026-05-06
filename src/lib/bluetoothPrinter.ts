@@ -1,45 +1,26 @@
 class EscPosEncoder {
   private buffer: number[] = [];
+  private readonly MAX_CHARS = 32; // 58mm printer has 32 characters per line
 
   initialize() {
-    this.buffer.push(0x1B, 0x40); // ESC @
+    // Retirado comando de inicialização complexo
     return this;
   }
 
-  alignCenter() {
-    this.buffer.push(0x1B, 0x61, 0x01); // ESC a 1
-    return this;
-  }
-
-  alignLeft() {
-    this.buffer.push(0x1B, 0x61, 0x00); // ESC a 0
-    return this;
-  }
-
-  bold(on: boolean) {
-    this.buffer.push(0x1B, 0x45, on ? 1 : 0); // ESC E n
-    return this;
-  }
-
-  size(width: number, height: number) {
-    const n = ((width - 1) << 4) | (height - 1);
-    this.buffer.push(0x1D, 0x21, n); // GS ! n
-    return this;
-  }
+  alignCenter() { return this; }
+  alignLeft() { return this; }
+  bold(on: boolean) { return this; }
+  size(width: number, height: number) { return this; }
 
   text(str: string) {
-    // Remove diacritics and special characters to ensure compatibility with generic thermal printers
     const normalized = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     for (let i = 0; i < normalized.length; i++) {
       const charCode = normalized.charCodeAt(i);
-      // Map basic emoji or unknown to standard ascii if needed, but for now we just filter out non-ascii
       if (charCode >= 32 && charCode <= 126) {
         this.buffer.push(charCode);
-      } else if (charCode === 10) { // newline
-        this.buffer.push(13, 10); // CR LF
+      } else if (charCode === 10) { 
+        this.buffer.push(10);
       } else {
-        // Fallback for emojis or other chars: could be a question mark or ignored.
-        // Let's use a dash or space
         this.buffer.push(32); 
       }
     }
@@ -52,13 +33,25 @@ class EscPosEncoder {
     return this;
   }
 
+  centerLine(str: string) {
+    const normalized = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (normalized.length >= this.MAX_CHARS) {
+      return this.line(normalized.substring(0, this.MAX_CHARS));
+    }
+    const padding = Math.floor((this.MAX_CHARS - normalized.length) / 2);
+    const paddedStr = " ".repeat(padding) + normalized;
+    return this.line(paddedStr);
+  }
+
   newline() {
-    this.buffer.push(0x0D, 0x0A); // CR LF
+    this.buffer.push(0x0A); // Apenas LF
     return this;
   }
 
   feed(lines = 3) {
-    this.buffer.push(0x1B, 0x64, lines); // ESC d n
+    for(let i=0; i<lines; i++) {
+      this.newline();
+    }
     return this;
   }
 
@@ -222,21 +215,19 @@ export class BluetoothPrinter {
     encoder.initialize();
 
     // Header
-    encoder.alignCenter().bold(true).size(1, 1).line(estacionamento.nome.toUpperCase());
-    encoder.bold(false).size(1, 1);
+    encoder.centerLine(estacionamento.nome.toUpperCase());
     
-    if (estacionamento.cnpj) encoder.line(`CNPJ: ${estacionamento.cnpj}`);
-    if (estacionamento.endereco) encoder.line(estacionamento.endereco);
-    if (estacionamento.telefone) encoder.line(`Tel: ${estacionamento.telefone}`);
+    if (estacionamento.cnpj) encoder.centerLine(`CNPJ: ${estacionamento.cnpj}`);
+    if (estacionamento.endereco) encoder.centerLine(estacionamento.endereco);
+    if (estacionamento.telefone) encoder.centerLine(`Tel: ${estacionamento.telefone}`);
     
     encoder.newline();
-    encoder.alignCenter().line('================================');
-    encoder.bold(true).line('RECIBO DE ESTACIONAMENTO');
-    encoder.bold(false).line('================================');
+    encoder.centerLine('================================');
+    encoder.centerLine('RECIBO DE ESTACIONAMENTO');
+    encoder.centerLine('================================');
     encoder.newline();
 
     // Body
-    encoder.alignLeft();
     encoder.line(`PLACA: ${veiculo.placa.toUpperCase()}`);
     if (veiculo.marca || veiculo.modelo) {
       encoder.line(`VEICULO: ${veiculo.marca || ''} ${veiculo.modelo || ''}`.trim());
@@ -249,21 +240,20 @@ export class BluetoothPrinter {
     encoder.line(`TEMPO:   ${veiculo.tempo}`);
     
     encoder.newline();
-    encoder.alignCenter().line('--------------------------------');
-    encoder.alignLeft();
+    encoder.centerLine('--------------------------------');
 
     if (veiculo.mensalista) {
-      encoder.bold(true).line('MENSALISTA - SEM COBRANCA').bold(false);
+      encoder.line('MENSALISTA - SEM COBRANCA');
     } else {
-      encoder.bold(true).size(2, 2).line(`TOTAL: ${veiculo.valor}`).size(1, 1).bold(false);
+      encoder.line(`TOTAL: ${veiculo.valor}`);
       if (veiculo.formaPagamento) {
         encoder.line(`PAGAMENTO: ${veiculo.formaPagamento.toUpperCase()}`);
       }
     }
 
     encoder.newline();
-    encoder.alignCenter().line('================================');
-    encoder.line('OBRIGADO PELA PREFERENCIA!');
+    encoder.centerLine('================================');
+    encoder.centerLine('OBRIGADO PELA PREFERENCIA!');
     
     // Feed and finish
     encoder.feed(4);
