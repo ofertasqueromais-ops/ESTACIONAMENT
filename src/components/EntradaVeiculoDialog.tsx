@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
-import { formatarPlaca } from '@/lib/parking';
-import { imprimirReciboHtml } from '@/lib/printReceipt';
+import { formatarPlaca, formatarMoeda } from '@/lib/parking';
+import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
+import { useBluetoothPrinter } from '@/hooks/useBluetoothPrinter';
 import { Receipt } from './Receipt';
 import { toast } from 'sonner';
 import { Car, Bike, Printer, Check } from 'lucide-react';
@@ -46,6 +47,7 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState<EntradaResultado | null>(null);
   const [estacionamento, setEstacionamento] = useState<EstacionamentoInfo | null>(null);
+  const { isConnected: isBluetoothConnected } = useBluetoothPrinter();
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const resetForm = () => {
@@ -62,9 +64,32 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
     onOpenChange(o);
   };
 
-  const imprimir = () => {
-    if (!receiptRef.current) return;
-    imprimirReciboHtml(receiptRef.current.innerHTML);
+  const imprimir = async () => {
+    if (isBluetoothConnected && resultado) {
+      try {
+        await bluetoothPrinter.printReceipt({
+          estacionamento: estacionamento || { nome: 'Estacionamento' },
+          veiculo: {
+            ...resultado,
+            id: resultado.id,
+            placa: resultado.placa,
+            entrada: new Date(resultado.entrada).toLocaleString('pt-BR'),
+            saida: '---', // Entrada não tem saída
+            tempo: '0 min',
+            valor: '---',
+            formaPagamento: '---',
+            mensalista: resultado.mensalista
+          }
+        });
+        toast.success("Recibo impresso via Bluetooth!");
+        return;
+      } catch (error: any) {
+        console.error(error);
+        toast.error(error.message || "Erro no Bluetooth, usando padrão...");
+      }
+    }
+
+    window.print();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -180,7 +205,7 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
 
             <div className="grid grid-cols-2 gap-3">
               <Button onClick={imprimir} variant="outline" className="gap-2 h-11 border-2">
-                <Printer className="w-4 h-4" /> Imprimir
+                <Printer className="w-4 h-4" /> {isBluetoothConnected ? 'Imprimir Bluetooth' : 'Imprimir'}
               </Button>
               <Button onClick={() => handleClose(false)} className="h-11 shadow-lg shadow-primary/20">
                 Fechar

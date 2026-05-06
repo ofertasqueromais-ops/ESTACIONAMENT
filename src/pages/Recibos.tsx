@@ -9,7 +9,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useUserRole } from '@/hooks/useUserRole';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
-import { imprimirReciboHtml } from '@/lib/printReceipt';
 import { useBluetoothPrinter } from '@/hooks/useBluetoothPrinter';
 import { useRef } from 'react';
 
@@ -122,11 +121,7 @@ export default function Recibos() {
       }
     }
 
-    if (!receiptRef.current) {
-      window.print();
-      return;
-    }
-    imprimirReciboHtml(receiptRef.current.innerHTML);
+    window.print();
   };
 
   return (

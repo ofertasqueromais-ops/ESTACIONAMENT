@@ -9,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda, PricingConfig } from '@/lib/parking';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
-import { imprimirReciboHtml } from '@/lib/printReceipt';
 import { toast } from 'sonner';
 
 interface Props {
@@ -173,11 +172,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
       }
     }
 
-    if (!receiptRef.current) {
-      window.print();
-      return;
-    }
-    imprimirReciboHtml(receiptRef.current.innerHTML);
+    window.print();
   };
 
   const handleClose = (o: boolean) => {
