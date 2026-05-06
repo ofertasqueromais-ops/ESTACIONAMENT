@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Receipt } from '@/components/Receipt';
+import { supabase } from '@/integrations/supabase/client';
+import { formatarTempo, formatarMoeda, gerarComprovante } from '@/lib/parking';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useUserRole } from '@/hooks/useUserRole';
