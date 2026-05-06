@@ -36,7 +36,7 @@ class EscPosEncoder {
       if (charCode >= 32 && charCode <= 126) {
         this.buffer.push(charCode);
       } else if (charCode === 10) { // newline
-        this.buffer.push(10);
+        this.buffer.push(13, 10); // CR LF
       } else {
         // Fallback for emojis or other chars: could be a question mark or ignored.
         // Let's use a dash or space
@@ -53,7 +53,7 @@ class EscPosEncoder {
   }
 
   newline() {
-    this.buffer.push(0x0A);
+    this.buffer.push(0x0D, 0x0A); // CR LF
     return this;
   }
 
@@ -99,7 +99,9 @@ export class BluetoothPrinter {
           '000018f0-0000-1000-8000-00805f9b34fb',
           'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
           '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-          '0000fee7-0000-1000-8000-00805f9b34fb'
+          '0000fee7-0000-1000-8000-00805f9b34fb',
+          '0000ff00-0000-1000-8000-00805f9b34fb',
+          '0000af30-0000-1000-8000-00805f9b34fb'
         ]
       });
 
@@ -126,11 +128,19 @@ export class BluetoothPrinter {
 
         try {
           const characteristics = await service.getCharacteristics();
+          // Prioritize characteristic that supports 'write' (with response) for better flow control
+          let fallbackChar = null;
+          
           for (const char of characteristics) {
-            if (char.properties.write || char.properties.writeWithoutResponse) {
+            if (char.properties.write) {
               foundCharacteristic = char;
               break;
+            } else if (char.properties.writeWithoutResponse) {
+              fallbackChar = char;
             }
+          }
+          if (!foundCharacteristic && fallbackChar) {
+            foundCharacteristic = fallbackChar;
           }
         } catch (e) {
           console.warn("Não foi possível ler características do serviço", uuid, e);
@@ -177,17 +187,13 @@ export class BluetoothPrinter {
     const CHUNK_SIZE = 20; 
     for (let i = 0; i < data.length; i += CHUNK_SIZE) {
       const chunk = data.slice(i, i + CHUNK_SIZE);
-      if (this.characteristic.properties.writeWithoutResponse) {
-         try {
-           await this.characteristic.writeValueWithoutResponse(chunk);
-         } catch (e) {
-           await this.characteristic.writeValue(chunk); // Fallback
-         }
-      } else {
+      if (this.characteristic.properties.write) {
          await this.characteristic.writeValue(chunk);
+      } else if (this.characteristic.properties.writeWithoutResponse) {
+         await this.characteristic.writeValueWithoutResponse(chunk);
+         // Fixed delay when flow control is absent to prevent buffer overruns
+         await new Promise(resolve => setTimeout(resolve, 50));
       }
-      // Small delay between chunks to avoid overwhelming the printer buffer
-      await new Promise(resolve => setTimeout(resolve, 50));
     }
   }
 
