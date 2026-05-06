@@ -107,16 +107,17 @@ export class BluetoothPrinter {
   }
 
   async printReceipt(dados: {
+    tipoRecibo?: 'entrada' | 'saida';
     estacionamento: { nome: string; cnpj?: string | null; endereco?: string | null; telefone?: string | null };
     veiculo: {
       placa: string;
       tipo: string;
       entrada: string;
-      saida: string;
-      tempo: string;
-      valor: string;
-      formaPagamento: string;
-      mensalista: boolean;
+      saida?: string;
+      tempo?: string;
+      valor?: string;
+      formaPagamento?: string;
+      mensalista?: boolean;
       marca?: string | null;
       modelo?: string | null;
     };
@@ -125,7 +126,8 @@ export class BluetoothPrinter {
       throw new Error("Impressora não conectada.");
     }
 
-    const { estacionamento, veiculo } = dados;
+    const { estacionamento, veiculo, tipoRecibo = 'saida' } = dados;
+    const isEntrada = tipoRecibo === 'entrada';
 
     const encoder = new EscPosEncoder();
     encoder.initialize();
@@ -140,7 +142,7 @@ export class BluetoothPrinter {
     
     encoder.newline();
     encoder.alignCenter().line('================================');
-    encoder.bold(true).line('RECIBO DE ESTACIONAMENTO');
+    encoder.bold(true).line(isEntrada ? 'COMPROVANTE DE ENTRADA' : 'RECIBO DE SAIDA');
     encoder.bold(false).line('================================');
     encoder.newline();
 
@@ -154,20 +156,29 @@ export class BluetoothPrinter {
     
     encoder.newline();
     encoder.line(`ENTRADA: ${veiculo.entrada}`);
-    encoder.line(`SAIDA:   ${veiculo.saida}`);
-    encoder.line(`TEMPO:   ${veiculo.tempo}`);
     
-    encoder.newline();
-    encoder.alignCenter().line('--------------------------------');
-    encoder.alignLeft();
+    if (!isEntrada) {
+      encoder.line(`SAIDA:   ${veiculo.saida}`);
+      encoder.line(`TEMPO:   ${veiculo.tempo}`);
+      
+      encoder.newline();
+      encoder.alignCenter().line('--------------------------------');
+      encoder.alignLeft();
 
-    if (veiculo.mensalista) {
-      encoder.bold(true).line('MENSALISTA - SEM COBRANCA').bold(false);
-    } else {
-      encoder.bold(true).size(2, 2).line(`TOTAL: ${veiculo.valor}`).size(1, 1).bold(false);
-      if (veiculo.formaPagamento) {
-        encoder.line(`PAGAMENTO: ${veiculo.formaPagamento.toUpperCase()}`);
+      if (veiculo.mensalista) {
+        encoder.bold(true).line('MENSALISTA - SEM COBRANCA').bold(false);
+      } else {
+        encoder.bold(true).size(2, 2).line(`TOTAL: ${veiculo.valor}`).size(1, 1).bold(false);
+        if (veiculo.formaPagamento) {
+          encoder.line(`PAGAMENTO: ${veiculo.formaPagamento.toUpperCase()}`);
+        }
       }
+    } else {
+      encoder.newline();
+      encoder.alignCenter().line('--------------------------------');
+      encoder.alignCenter();
+      encoder.bold(true).line('GUARDE ESTE COMPROVANTE');
+      encoder.bold(false).line('Apresente na saida do veiculo');
     }
 
     encoder.newline();

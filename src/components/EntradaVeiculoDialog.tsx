@@ -68,6 +68,7 @@ export function EntradaVeiculoDialog({ open, onOpenChange, onSuccess }: Props) {
     if (isBluetoothConnected && resultado) {
       try {
         await bluetoothPrinter.printReceipt({
+          tipoRecibo: 'entrada',
           estacionamento: estacionamento || { nome: 'Estacionamento' },
           veiculo: {
             ...resultado,
