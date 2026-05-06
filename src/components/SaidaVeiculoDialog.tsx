@@ -155,7 +155,6 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
           estacionamento: estacionamento || { nome: 'Estacionamento' },
           veiculo: {
             ...veiculo,
-            id: veiculo.id,
             placa: veiculo.placa,
             entrada: new Date(veiculo.entrada).toLocaleString('pt-BR'),
             saida: new Date().toLocaleString('pt-BR'),
