@@ -108,15 +108,41 @@ export class BluetoothPrinter {
       this.server = await this.device.gatt.connect();
 
       const services = await this.server.getPrimaryServices();
+      
+      let foundCharacteristic = null;
+      
       for (const service of services) {
-        const characteristics = await service.getCharacteristics();
-        for (const char of characteristics) {
-          if (char.properties.write || char.properties.writeWithoutResponse) {
-            this.characteristic = char;
-            this.notify();
-            return true;
-          }
+        // Ignora serviços genéricos do Bluetooth que podem ter características graváveis,
+        // mas não são a impressora em si.
+        const uuid = service.uuid.toLowerCase();
+        if (
+          uuid.startsWith('00001800') || // Generic Access
+          uuid.startsWith('00001801') || // Generic Attribute
+          uuid.startsWith('0000180a') || // Device Information
+          uuid.startsWith('0000180f')    // Battery Service
+        ) {
+          continue;
         }
+
+        try {
+          const characteristics = await service.getCharacteristics();
+          for (const char of characteristics) {
+            if (char.properties.write || char.properties.writeWithoutResponse) {
+              foundCharacteristic = char;
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn("Não foi possível ler características do serviço", uuid, e);
+        }
+        
+        if (foundCharacteristic) break;
+      }
+
+      if (foundCharacteristic) {
+        this.characteristic = foundCharacteristic;
+        this.notify();
+        return true;
       }
 
       throw new Error("Nenhuma característica de escrita suportada encontrada no dispositivo.");
