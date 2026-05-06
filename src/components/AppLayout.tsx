@@ -60,18 +60,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const handleToggleBluetooth = async () => {
     if (isConnected) {
       bluetoothPrinter.disconnect();
-      toast.info("Impressora desconectada");
+      toast.info("Impressão via App RawBT desativada");
       return;
     }
     
     try {
       setIsConnecting(true);
       await bluetoothPrinter.connect();
-      const uuid = (bluetoothPrinter as any).lastConnectedUuid || "Desconhecido";
-      toast.success(`Impressora conectada! (Canal: ${uuid.substring(0, 8)})`);
+      toast.success("Impressão via App RawBT ativada!");
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Erro ao conectar impressora");
+      toast.error(error.message || "Erro ao ativar RawBT");
     } finally {
       setIsConnecting(false);
     }
@@ -135,7 +134,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               onClick={handleToggleBluetooth}
               disabled={isConnecting}
               className={isConnected ? "text-success hover:text-success hover:bg-success/10" : "text-muted-foreground"}
-              title={isConnected ? "Desconectar impressora" : "Conectar impressora Bluetooth"}
+              title={isConnected ? "Desativar integração RawBT" : "Ativar integração RawBT"}
             >
               <Printer className="w-5 h-5" />
             </Button>

@@ -1,16 +1,31 @@
 class EscPosEncoder {
   private buffer: number[] = [];
-  private readonly MAX_CHARS = 32; // 58mm printer has 32 characters per line
 
   initialize() {
-    this.buffer.push(0x1B, 0x40); // ESC @ (PT-210 precisa disso para acordar o buffer)
+    this.buffer.push(0x1B, 0x40); // ESC @
     return this;
   }
 
-  alignCenter() { return this; }
-  alignLeft() { return this; }
-  bold(on: boolean) { return this; }
-  size(width: number, height: number) { return this; }
+  alignCenter() {
+    this.buffer.push(0x1B, 0x61, 0x01); // ESC a 1
+    return this;
+  }
+
+  alignLeft() {
+    this.buffer.push(0x1B, 0x61, 0x00); // ESC a 0
+    return this;
+  }
+
+  bold(on: boolean) {
+    this.buffer.push(0x1B, 0x45, on ? 1 : 0); // ESC E n
+    return this;
+  }
+
+  size(width: number, height: number) {
+    const n = ((width - 1) << 4) | (height - 1);
+    this.buffer.push(0x1D, 0x21, n); // GS ! n
+    return this;
+  }
 
   text(str: string) {
     const normalized = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -33,25 +48,13 @@ class EscPosEncoder {
     return this;
   }
 
-  centerLine(str: string) {
-    const normalized = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    if (normalized.length >= this.MAX_CHARS) {
-      return this.line(normalized.substring(0, this.MAX_CHARS));
-    }
-    const padding = Math.floor((this.MAX_CHARS - normalized.length) / 2);
-    const paddedStr = " ".repeat(padding) + normalized;
-    return this.line(paddedStr);
-  }
-
   newline() {
-    this.buffer.push(0x0A); // Apenas LF
+    this.buffer.push(0x0A);
     return this;
   }
 
   feed(lines = 3) {
-    for(let i=0; i<lines; i++) {
-      this.newline();
-    }
+    this.buffer.push(0x1B, 0x64, lines); // ESC d n
     return this;
   }
 
@@ -60,12 +63,18 @@ class EscPosEncoder {
   }
 }
 
+function bufferToBase64(buffer: Uint8Array) {
+  let binary = '';
+  for (let i = 0; i < buffer.byteLength; i++) {
+    binary += String.fromCharCode(buffer[i]);
+  }
+  return window.btoa(binary);
+}
+
 type Listener = (connected: boolean) => void;
 
 export class BluetoothPrinter {
-  private device: any = null;
-  private server: any = null;
-  private characteristic: any = null;
+  private isRawBTEnabled = localStorage.getItem('rawbt_enabled') === 'true';
   private listeners: Listener[] = [];
 
   subscribe(listener: Listener) {
@@ -76,126 +85,25 @@ export class BluetoothPrinter {
   }
 
   private notify() {
-    const status = this.isConnected();
-    this.listeners.forEach(l => l(status));
+    this.listeners.forEach(l => l(this.isConnected()));
   }
 
   async connect(): Promise<boolean> {
-    try {
-      if (!(navigator as any).bluetooth) {
-        throw new Error("Seu navegador não suporta a Web Bluetooth API.");
-      }
-
-      this.device = await (navigator as any).bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [
-          '000018f0-0000-1000-8000-00805f9b34fb',
-          'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-          '0000fee7-0000-1000-8000-00805f9b34fb',
-          '0000ff00-0000-1000-8000-00805f9b34fb',
-          '0000af30-0000-1000-8000-00805f9b34fb'
-        ]
-      });
-
-      this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
-
-      this.server = await this.device.gatt.connect();
-
-      const services = await this.server.getPrimaryServices();
-      
-      let foundCharacteristic = null;
-      
-      for (const service of services) {
-        // Ignora serviços genéricos do Bluetooth que podem ter características graváveis,
-        // mas não são a impressora em si.
-        const uuid = service.uuid.toLowerCase();
-        if (
-          uuid.startsWith('00001800') || // Generic Access
-          uuid.startsWith('00001801') || // Generic Attribute
-          uuid.startsWith('0000180a') || // Device Information
-          uuid.startsWith('0000180f')    // Battery Service
-        ) {
-          continue;
-        }
-
-        try {
-          const characteristics = await service.getCharacteristics();
-          // Prioritize characteristic that supports 'write' (with response) for better flow control
-          let fallbackChar = null;
-          
-          for (const char of characteristics) {
-            if (char.properties.write) {
-              foundCharacteristic = char;
-              break;
-            } else if (char.properties.writeWithoutResponse) {
-              fallbackChar = char;
-            }
-          }
-          if (!foundCharacteristic && fallbackChar) {
-            foundCharacteristic = fallbackChar;
-          }
-        } catch (e) {
-          console.warn("Não foi possível ler características do serviço", uuid, e);
-        }
-        
-        if (foundCharacteristic) break;
-      }
-
-      if (foundCharacteristic) {
-        this.characteristic = foundCharacteristic;
-        this.notify();
-        // Lança um erro especial apenas para fins de debug, que o front-end vai capturar e mostrar no toast
-        // Mas não podemos lançar erro se quisermos retornar true.
-        // Vamos anexar o UUID da característica no objeto da classe para poder ler de fora.
-        (this as any).lastConnectedUuid = foundCharacteristic.uuid;
-        return true;
-      }
-
-      throw new Error("Nenhuma característica de escrita suportada encontrada no dispositivo.");
-    } catch (err) {
-      console.error("Bluetooth connection error:", err);
-      this.disconnect();
-      throw err;
-    }
-  }
-
-  private onDisconnected() {
-    console.log("Impressora desconectada");
-    this.device = null;
-    this.server = null;
-    this.characteristic = null;
+    // Para integração RawBT, apenas habilitamos a flag e salvamos no storage
+    this.isRawBTEnabled = true;
+    localStorage.setItem('rawbt_enabled', 'true');
     this.notify();
+    return true;
   }
 
   disconnect() {
-    if (this.device && this.device.gatt.connected) {
-      this.device.gatt.disconnect();
-    }
-    this.onDisconnected();
+    this.isRawBTEnabled = false;
+    localStorage.removeItem('rawbt_enabled');
+    this.notify();
   }
 
   isConnected(): boolean {
-    return !!(this.device && this.device.gatt.connected && this.characteristic);
-  }
-
-  private async writeInChunks(data: Uint8Array) {
-    // BLE typical MTU payload limit is 20 bytes for standard BLE 4.0
-    const CHUNK_SIZE = 100; // PT-210 usually accepts larger chunks, 20 might be too small and cause timeout if sent too fast
-    for (let i = 0; i < data.length; i += CHUNK_SIZE) {
-      const chunk = data.slice(i, i + CHUNK_SIZE);
-      try {
-        if (this.characteristic.properties.writeWithoutResponse) {
-           await this.characteristic.writeValueWithoutResponse(chunk);
-           await new Promise(resolve => setTimeout(resolve, 40));
-        } else if (this.characteristic.properties.write) {
-           await this.characteristic.writeValue(chunk);
-        }
-      } catch (err) {
-        console.error("Write error on chunk", i, err);
-        throw new Error("Falha na comunicação Bluetooth com a impressora.");
-      }
-    }
+    return this.isRawBTEnabled;
   }
 
   async printReceipt(dados: {
@@ -223,19 +131,21 @@ export class BluetoothPrinter {
     encoder.initialize();
 
     // Header
-    encoder.centerLine(estacionamento.nome.toUpperCase());
+    encoder.alignCenter().bold(true).size(1, 1).line(estacionamento.nome.toUpperCase());
+    encoder.bold(false).size(1, 1);
     
-    if (estacionamento.cnpj) encoder.centerLine(`CNPJ: ${estacionamento.cnpj}`);
-    if (estacionamento.endereco) encoder.centerLine(estacionamento.endereco);
-    if (estacionamento.telefone) encoder.centerLine(`Tel: ${estacionamento.telefone}`);
+    if (estacionamento.cnpj) encoder.line(`CNPJ: ${estacionamento.cnpj}`);
+    if (estacionamento.endereco) encoder.line(estacionamento.endereco);
+    if (estacionamento.telefone) encoder.line(`Tel: ${estacionamento.telefone}`);
     
     encoder.newline();
-    encoder.centerLine('================================');
-    encoder.centerLine('RECIBO DE ESTACIONAMENTO');
-    encoder.centerLine('================================');
+    encoder.alignCenter().line('================================');
+    encoder.bold(true).line('RECIBO DE ESTACIONAMENTO');
+    encoder.bold(false).line('================================');
     encoder.newline();
 
     // Body
+    encoder.alignLeft();
     encoder.line(`PLACA: ${veiculo.placa.toUpperCase()}`);
     if (veiculo.marca || veiculo.modelo) {
       encoder.line(`VEICULO: ${veiculo.marca || ''} ${veiculo.modelo || ''}`.trim());
@@ -248,26 +158,31 @@ export class BluetoothPrinter {
     encoder.line(`TEMPO:   ${veiculo.tempo}`);
     
     encoder.newline();
-    encoder.centerLine('--------------------------------');
+    encoder.alignCenter().line('--------------------------------');
+    encoder.alignLeft();
 
     if (veiculo.mensalista) {
-      encoder.line('MENSALISTA - SEM COBRANCA');
+      encoder.bold(true).line('MENSALISTA - SEM COBRANCA').bold(false);
     } else {
-      encoder.line(`TOTAL: ${veiculo.valor}`);
+      encoder.bold(true).size(2, 2).line(`TOTAL: ${veiculo.valor}`).size(1, 1).bold(false);
       if (veiculo.formaPagamento) {
         encoder.line(`PAGAMENTO: ${veiculo.formaPagamento.toUpperCase()}`);
       }
     }
 
     encoder.newline();
-    encoder.centerLine('================================');
-    encoder.centerLine('OBRIGADO PELA PREFERENCIA!');
+    encoder.alignCenter().line('================================');
+    encoder.line('OBRIGADO PELA PREFERENCIA!');
     
     // Feed and finish
     encoder.feed(4);
 
     const buffer = encoder.encode();
-    await this.writeInChunks(buffer);
+    const base64Data = bufferToBase64(buffer);
+    
+    // Dispara a Intent do RawBT no Android
+    const intentUrl = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end`;
+    window.location.href = intentUrl;
   }
 }
 
