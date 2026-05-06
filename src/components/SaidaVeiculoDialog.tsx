@@ -50,6 +50,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const [finalizado, setFinalizado] = useState(false);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>({});
   const [isBluetoothConnected, setIsBluetoothConnected] = useState(bluetoothPrinter.isConnected());
+  const [isConnectingBluetooth, setIsConnectingBluetooth] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const agora = new Date();
@@ -155,6 +156,20 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     imprimirReciboHtml(receiptRef.current.innerHTML);
   };
 
+  const handleConnectBluetooth = async () => {
+    try {
+      setIsConnectingBluetooth(true);
+      await bluetoothPrinter.connect();
+      setIsBluetoothConnected(true);
+      toast.success("Impressora conectada com sucesso!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Erro ao conectar impressora");
+    } finally {
+      setIsConnectingBluetooth(false);
+    }
+  };
+
   const handleBluetoothPrint = async () => {
     if (!veiculo) return;
     
@@ -251,20 +266,18 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
                 <Printer className="w-4 h-4" /> Imprimir (Navegador)
               </Button>
               {isBluetoothConnected ? (
-                <Button onClick={handleBluetoothPrint} className="w-full gap-2 h-11 shadow-lg shadow-primary/20 bg-primary">
+                <Button onClick={handleBluetoothPrint} className="w-full gap-2 h-11 shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
                   <Printer className="w-4 h-4" /> Imprimir (Bluetooth)
                 </Button>
               ) : (
-                <Button onClick={() => handleClose(false)} className="w-full h-11 shadow-lg shadow-primary/20">
-                  Fechar
+                <Button onClick={handleConnectBluetooth} disabled={isConnectingBluetooth} className="w-full gap-2 h-11 shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
+                  <Printer className="w-4 h-4" /> {isConnectingBluetooth ? 'Conectando...' : 'Conectar Bluetooth'}
                 </Button>
               )}
             </div>
-            {isBluetoothConnected && (
-              <Button onClick={() => handleClose(false)} variant="ghost" className="w-full mt-2">
-                Fechar
-              </Button>
-            )}
+            <Button onClick={() => handleClose(false)} variant="ghost" className="w-full mt-2">
+              Fechar
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">

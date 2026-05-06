@@ -11,6 +11,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { formatarMoeda, formatarTempo, gerarComprovante } from '@/lib/parking';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
+import { imprimirReciboHtml } from '@/lib/printReceipt';
+import { useRef } from 'react';
 
 interface VeiculoFinalizado {
   id: string;
@@ -47,6 +49,7 @@ export default function Recibos() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isBluetoothConnected, setIsBluetoothConnected] = useState(bluetoothPrinter.isConnected());
   const [isConnectingBluetooth, setIsConnectingBluetooth] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -139,6 +142,14 @@ export default function Recibos() {
       console.error(error);
       toast.error(error.message || "Erro ao imprimir");
     }
+  };
+
+  const handleImprimirNavegador = () => {
+    if (!receiptRef.current) {
+      window.print();
+      return;
+    }
+    imprimirReciboHtml(receiptRef.current.innerHTML);
   };
 
   return (
@@ -241,6 +252,7 @@ export default function Recibos() {
             <div className="space-y-4">
               <div className="border rounded-xl bg-slate-50 overflow-hidden">
                 <Receipt 
+                  ref={receiptRef}
                   estacionamento={estacionamento || { nome: 'Estacionamento' }}
                   veiculo={{
                     ...selectedVeiculo,
@@ -250,7 +262,7 @@ export default function Recibos() {
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Button onClick={() => window.print()} variant="outline" className="w-full gap-2 h-12">
+                <Button onClick={handleImprimirNavegador} variant="outline" className="w-full gap-2 h-12">
                   <Printer className="w-5 h-5" /> Imprimir (Navegador)
                 </Button>
                 {isBluetoothConnected ? (
