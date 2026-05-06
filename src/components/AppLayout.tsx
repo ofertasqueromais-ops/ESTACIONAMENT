@@ -67,7 +67,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
     try {
       setIsConnecting(true);
       await bluetoothPrinter.connect();
-      toast.success("Impressora conectada com sucesso!");
+      const uuid = (bluetoothPrinter as any).lastConnectedUuid || "Desconhecido";
+      toast.success(`Impressora conectada! (Canal: ${uuid.substring(0, 8)})`);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Erro ao conectar impressora");

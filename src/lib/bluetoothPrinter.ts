@@ -3,7 +3,7 @@ class EscPosEncoder {
   private readonly MAX_CHARS = 32; // 58mm printer has 32 characters per line
 
   initialize() {
-    // Retirado comando de inicialização complexo
+    this.buffer.push(0x1B, 0x40); // ESC @ (PT-210 precisa disso para acordar o buffer)
     return this;
   }
 
@@ -145,6 +145,10 @@ export class BluetoothPrinter {
       if (foundCharacteristic) {
         this.characteristic = foundCharacteristic;
         this.notify();
+        // Lança um erro especial apenas para fins de debug, que o front-end vai capturar e mostrar no toast
+        // Mas não podemos lançar erro se quisermos retornar true.
+        // Vamos anexar o UUID da característica no objeto da classe para poder ler de fora.
+        (this as any).lastConnectedUuid = foundCharacteristic.uuid;
         return true;
       }
 
@@ -177,15 +181,19 @@ export class BluetoothPrinter {
 
   private async writeInChunks(data: Uint8Array) {
     // BLE typical MTU payload limit is 20 bytes for standard BLE 4.0
-    const CHUNK_SIZE = 20; 
+    const CHUNK_SIZE = 100; // PT-210 usually accepts larger chunks, 20 might be too small and cause timeout if sent too fast
     for (let i = 0; i < data.length; i += CHUNK_SIZE) {
       const chunk = data.slice(i, i + CHUNK_SIZE);
-      if (this.characteristic.properties.write) {
-         await this.characteristic.writeValue(chunk);
-      } else if (this.characteristic.properties.writeWithoutResponse) {
-         await this.characteristic.writeValueWithoutResponse(chunk);
-         // Fixed delay when flow control is absent to prevent buffer overruns
-         await new Promise(resolve => setTimeout(resolve, 50));
+      try {
+        if (this.characteristic.properties.writeWithoutResponse) {
+           await this.characteristic.writeValueWithoutResponse(chunk);
+           await new Promise(resolve => setTimeout(resolve, 40));
+        } else if (this.characteristic.properties.write) {
+           await this.characteristic.writeValue(chunk);
+        }
+      } catch (err) {
+        console.error("Write error on chunk", i, err);
+        throw new Error("Falha na comunicação Bluetooth com a impressora.");
       }
     }
   }
