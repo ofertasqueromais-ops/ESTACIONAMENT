@@ -8,10 +8,9 @@ import { Receipt } from '@/components/Receipt';
 import { useAuth } from '@/hooks/useAuth';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useUserRole } from '@/hooks/useUserRole';
-import { supabase } from '@/integrations/supabase/client';
-import { formatarMoeda, formatarTempo, gerarComprovante } from '@/lib/parking';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
 import { imprimirReciboHtml } from '@/lib/printReceipt';
+import { useBluetoothPrinter } from '@/hooks/useBluetoothPrinter';
 import { useRef } from 'react';
 
 interface VeiculoFinalizado {
@@ -47,8 +46,7 @@ export default function Recibos() {
   const [selectedVeiculo, setSelectedVeiculo] = useState<VeiculoFinalizado | null>(null);
   const [estacionamento, setEstacionamento] = useState<Estacionamento | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [isBluetoothConnected, setIsBluetoothConnected] = useState(bluetoothPrinter.isConnected());
-  const [isConnectingBluetooth, setIsConnectingBluetooth] = useState(false);
+  const { isConnected: isBluetoothConnected } = useBluetoothPrinter();
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,53 +96,32 @@ export default function Recibos() {
     setIsPrintModalOpen(true);
   };
 
-  const handleConnectBluetooth = async () => {
-    try {
-      setIsConnectingBluetooth(true);
-      await bluetoothPrinter.connect();
-      setIsBluetoothConnected(true);
-      toast.success("Impressora conectada com sucesso!");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Erro ao conectar impressora");
-    } finally {
-      setIsConnectingBluetooth(false);
+  const handleImprimirNavegador = async () => {
+    if (isBluetoothConnected && selectedVeiculo) {
+      try {
+        const veiculoDados = {
+          ...selectedVeiculo,
+          entrada: new Date(selectedVeiculo.entrada).toLocaleString('pt-BR'),
+          saida: new Date(selectedVeiculo.saida).toLocaleString('pt-BR'),
+          tempo: formatarTempo(new Date(selectedVeiculo.entrada), new Date(selectedVeiculo.saida)),
+          formaPagamento: selectedVeiculo.valor > 0 ? 'Confirmado' : '',
+          valor: formatarMoeda(selectedVeiculo.valor || 0)
+        };
+
+        await bluetoothPrinter.printReceipt({
+          estacionamento: estacionamento || { nome: 'Estacionamento' },
+          veiculo: veiculoDados
+        });
+        
+        toast.success("Recibo enviado para impressora!");
+        setIsPrintModalOpen(false);
+        return;
+      } catch (error: any) {
+        console.error(error);
+        toast.error(error.message || "Erro no Bluetooth, tentando via navegador...");
+      }
     }
-  };
 
-  const handleDisconnectBluetooth = () => {
-    bluetoothPrinter.disconnect();
-    setIsBluetoothConnected(false);
-    toast.info("Impressora desconectada");
-  };
-
-  const handleBluetoothPrint = async () => {
-    if (!selectedVeiculo) return;
-    
-    try {
-      const veiculoDados = {
-        ...selectedVeiculo,
-        entrada: new Date(selectedVeiculo.entrada).toLocaleString('pt-BR'),
-        saida: new Date(selectedVeiculo.saida).toLocaleString('pt-BR'),
-        tempo: formatarTempo(new Date(selectedVeiculo.entrada), new Date(selectedVeiculo.saida)),
-        formaPagamento: selectedVeiculo.valor > 0 ? 'Confirmado' : '',
-        valor: formatarMoeda(selectedVeiculo.valor || 0)
-      };
-
-      await bluetoothPrinter.printReceipt({
-        estacionamento: estacionamento || { nome: 'Estacionamento' },
-        veiculo: veiculoDados
-      });
-      
-      toast.success("Recibo enviado para impressora!");
-      setIsPrintModalOpen(false);
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Erro ao imprimir");
-    }
-  };
-
-  const handleImprimirNavegador = () => {
     if (!receiptRef.current) {
       window.print();
       return;
@@ -158,17 +135,6 @@ export default function Recibos() {
         <div>
           <h1 className="text-2xl font-heading font-bold">Recibos</h1>
           <p className="text-muted-foreground text-sm">Consulte e reenvie comprovantes</p>
-        </div>
-        <div>
-          {isBluetoothConnected ? (
-            <Button variant="outline" className="border-success text-success hover:bg-success/10 hover:text-success" onClick={handleDisconnectBluetooth}>
-              <Printer className="w-4 h-4 mr-2" /> Impressora Conectada
-            </Button>
-          ) : (
-            <Button variant="outline" onClick={handleConnectBluetooth} disabled={isConnectingBluetooth}>
-              <Printer className="w-4 h-4 mr-2" /> {isConnectingBluetooth ? 'Conectando...' : 'Conectar Impressora Bluetooth'}
-            </Button>
-          )}
         </div>
       </div>
 
@@ -261,20 +227,9 @@ export default function Recibos() {
                   }}
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Button onClick={handleImprimirNavegador} variant="outline" className="w-full gap-2 h-12">
-                  <Printer className="w-5 h-5" /> Imprimir (Navegador)
-                </Button>
-                {isBluetoothConnected ? (
-                  <Button onClick={handleBluetoothPrint} className="w-full gap-2 h-12 shadow-lg shadow-primary/20 bg-primary">
-                    <Printer className="w-5 h-5" /> Imprimir (Bluetooth)
-                  </Button>
-                ) : (
-                  <Button onClick={handleConnectBluetooth} className="w-full gap-2 h-12 shadow-lg shadow-primary/20 bg-primary">
-                    <Printer className="w-5 h-5" /> Conectar Bluetooth
-                  </Button>
-                )}
-              </div>
+              <Button onClick={handleImprimirNavegador} className="w-full gap-2 h-12 shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
+                <Printer className="w-5 h-5" /> {isBluetoothConnected ? 'Imprimir Bluetooth' : 'Imprimir'}
+              </Button>
             </div>
           )}
         </DialogContent>

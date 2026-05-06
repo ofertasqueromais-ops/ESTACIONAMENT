@@ -67,10 +67,25 @@ class EscPosEncoder {
   }
 }
 
+type Listener = (connected: boolean) => void;
+
 export class BluetoothPrinter {
   private device: any = null;
   private server: any = null;
   private characteristic: any = null;
+  private listeners: Listener[] = [];
+
+  subscribe(listener: Listener) {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  private notify() {
+    const status = this.isConnected();
+    this.listeners.forEach(l => l(status));
+  }
 
   async connect(): Promise<boolean> {
     try {
@@ -98,6 +113,7 @@ export class BluetoothPrinter {
         for (const char of characteristics) {
           if (char.properties.write || char.properties.writeWithoutResponse) {
             this.characteristic = char;
+            this.notify();
             return true;
           }
         }
@@ -116,6 +132,7 @@ export class BluetoothPrinter {
     this.device = null;
     this.server = null;
     this.characteristic = null;
+    this.notify();
   }
 
   disconnect() {
@@ -130,12 +147,16 @@ export class BluetoothPrinter {
   }
 
   private async writeInChunks(data: Uint8Array) {
-    // BLE typical MTU size is small, usually we write 20 or 512 bytes at a time
-    const CHUNK_SIZE = 512; 
+    // BLE typical MTU payload limit is 20 bytes for standard BLE 4.0
+    const CHUNK_SIZE = 20; 
     for (let i = 0; i < data.length; i += CHUNK_SIZE) {
       const chunk = data.slice(i, i + CHUNK_SIZE);
       if (this.characteristic.properties.writeWithoutResponse) {
-         await this.characteristic.writeValueWithoutResponse(chunk);
+         try {
+           await this.characteristic.writeValueWithoutResponse(chunk);
+         } catch (e) {
+           await this.characteristic.writeValue(chunk); // Fallback
+         }
       } else {
          await this.characteristic.writeValue(chunk);
       }

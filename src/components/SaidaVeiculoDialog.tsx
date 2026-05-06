@@ -148,51 +148,36 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     }
   };
 
-  const imprimirRecibo = () => {
+  const imprimirRecibo = async () => {
+    if (isBluetoothConnected && veiculo) {
+      try {
+        await bluetoothPrinter.printReceipt({
+          estacionamento: estacionamento || { nome: 'Estacionamento' },
+          veiculo: {
+            ...veiculo,
+            id: veiculo.id,
+            placa: veiculo.placa,
+            entrada: new Date(veiculo.entrada).toLocaleString('pt-BR'),
+            saida: new Date().toLocaleString('pt-BR'),
+            tempo,
+            valor: formatarMoeda(valor),
+            formaPagamento: veiculo.mensalista && !mensalistaVencido ? '' : formaPagamento,
+            mensalista: veiculo.mensalista && !mensalistaVencido
+          }
+        });
+        toast.success("Recibo impresso via Bluetooth!");
+        return; // Retorna se a impressão bluetooth foi bem-sucedida
+      } catch (error: any) {
+        console.error(error);
+        toast.error(error.message || "Erro no Bluetooth, usando padrão...");
+      }
+    }
+
     if (!receiptRef.current) {
       window.print();
       return;
     }
     imprimirReciboHtml(receiptRef.current.innerHTML);
-  };
-
-  const handleConnectBluetooth = async () => {
-    try {
-      setIsConnectingBluetooth(true);
-      await bluetoothPrinter.connect();
-      setIsBluetoothConnected(true);
-      toast.success("Impressora conectada com sucesso!");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Erro ao conectar impressora");
-    } finally {
-      setIsConnectingBluetooth(false);
-    }
-  };
-
-  const handleBluetoothPrint = async () => {
-    if (!veiculo) return;
-    
-    try {
-      await bluetoothPrinter.printReceipt({
-        estacionamento: estacionamento || { nome: 'Estacionamento' },
-        veiculo: {
-          ...veiculo,
-          id: veiculo.id,
-          placa: veiculo.placa,
-          entrada: new Date(veiculo.entrada).toLocaleString('pt-BR'),
-          saida: new Date().toLocaleString('pt-BR'),
-          tempo,
-          valor: formatarMoeda(valor),
-          formaPagamento: veiculo.mensalista && !mensalistaVencido ? '' : formaPagamento,
-          mensalista: veiculo.mensalista && !mensalistaVencido
-        }
-      });
-      toast.success("Recibo enviado para impressora!");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Erro ao imprimir");
-    }
   };
 
   const handleClose = (o: boolean) => {
@@ -261,23 +246,14 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Button onClick={imprimirRecibo} variant="outline" className="w-full gap-2 h-11 border-2">
-                <Printer className="w-4 h-4" /> Imprimir (Navegador)
+                <Printer className="w-4 h-4" /> {isBluetoothConnected ? 'Imprimir Bluetooth' : 'Imprimir'}
               </Button>
-              {isBluetoothConnected ? (
-                <Button onClick={handleBluetoothPrint} className="w-full gap-2 h-11 shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
-                  <Printer className="w-4 h-4" /> Imprimir (Bluetooth)
-                </Button>
-              ) : (
-                <Button onClick={handleConnectBluetooth} disabled={isConnectingBluetooth} className="w-full gap-2 h-11 shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
-                  <Printer className="w-4 h-4" /> {isConnectingBluetooth ? 'Conectando...' : 'Conectar Bluetooth'}
-                </Button>
-              )}
+              <Button onClick={() => handleClose(false)} className="w-full h-11 shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
+                Fechar
+              </Button>
             </div>
-            <Button onClick={() => handleClose(false)} variant="ghost" className="w-full mt-2">
-              Fechar
-            </Button>
           </div>
         ) : (
           <div className="space-y-4">

@@ -5,7 +5,10 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { NavLink } from '@/components/NavLink';
-import { LogOut, LayoutDashboard, Users, Wallet, FileText, Shield, X, AlertTriangle } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Wallet, FileText, Shield, X, AlertTriangle, Printer } from 'lucide-react';
+import { useBluetoothPrinter } from '@/hooks/useBluetoothPrinter';
+import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
+import { toast } from 'sonner';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
@@ -13,6 +16,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { isImpersonating, impersonatedEstacionamentoNome, impersonatedEstacionamentoId, stopImpersonation } = useImpersonation();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [estNome, setEstNome] = useState<string>('Pereira');
+  const { isConnected } = useBluetoothPrinter();
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     const fetchLogo = async () => {
@@ -51,6 +56,25 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
     fetchLogo();
   }, [user, isImpersonating, impersonatedEstacionamentoId]);
+
+  const handleToggleBluetooth = async () => {
+    if (isConnected) {
+      bluetoothPrinter.disconnect();
+      toast.info("Impressora desconectada");
+      return;
+    }
+    
+    try {
+      setIsConnecting(true);
+      await bluetoothPrinter.connect();
+      toast.success("Impressora conectada com sucesso!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Erro ao conectar impressora");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,9 +128,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
             ) : null}
           </nav>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleToggleBluetooth}
+              disabled={isConnecting}
+              className={isConnected ? "text-success hover:text-success hover:bg-success/10" : "text-muted-foreground"}
+              title={isConnected ? "Desconectar impressora" : "Conectar impressora Bluetooth"}
+            >
+              <Printer className="w-5 h-5" />
+            </Button>
             <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
-            <Button variant="ghost" size="icon" onClick={signOut}>
-              <LogOut className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
+              <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>
