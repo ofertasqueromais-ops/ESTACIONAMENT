@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EntradaVeiculoDialog } from '@/components/EntradaVeiculoDialog';
 import { SaidaVeiculoDialog } from '@/components/SaidaVeiculoDialog';
+import { AdicionarServicoDialog } from '@/components/AdicionarServicoDialog';
 import { formatarTempo } from '@/lib/parking';
-import { LogIn, LogOut, Car, Bike, Search, Users, Clock } from 'lucide-react';
+import { LogIn, LogOut, Car, Bike, Search, Users, Clock, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface Veiculo {
@@ -16,6 +17,7 @@ interface Veiculo {
   tipo: string;
   entrada: string;
   mensalista: boolean;
+  servicos?: { nome: string; valor: number }[];
 }
 
 export default function Dashboard() {
@@ -25,6 +27,8 @@ export default function Dashboard() {
   const [filtro, setFiltro] = useState('');
   const [entradaOpen, setEntradaOpen] = useState(false);
   const [saidaOpen, setSaidaOpen] = useState(false);
+  const [servicoOpen, setServicoOpen] = useState(false);
+  const [veiculoServico, setVeiculoServico] = useState<{id: string, placa: string, servicos: any[]}>({id: '', placa: '', servicos: []});
   const [placaSaida, setPlacaSaida] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +37,7 @@ export default function Dashboard() {
     
     let query = supabase
       .from('veiculos')
-      .select('id, placa, tipo, entrada, mensalista')
+      .select('id, placa, tipo, entrada, mensalista, servicos')
       .eq('status', 'ativo')
       .order('entrada', { ascending: false });
 
@@ -120,12 +124,14 @@ export default function Dashboard() {
           <p className="text-center text-muted-foreground py-8">Nenhum veículo no pátio</p>
         ) : (
           veiculosFiltrados.map(v => (
-            <button
+            <div
               key={v.id}
-              onClick={() => abrirSaida(v.placa)}
               className="w-full flex items-center justify-between p-3 rounded-xl border bg-card hover:shadow-md transition-all text-left"
             >
-              <div className="flex items-center gap-3">
+              <div 
+                className="flex items-center gap-3 cursor-pointer flex-1"
+                onClick={() => abrirSaida(v.placa)}
+              >
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
                   {v.tipo === 'carro' ? <Car className="w-5 h-5" /> : <Bike className="w-5 h-5" />}
                 </div>
@@ -143,15 +149,36 @@ export default function Dashboard() {
                     Mensalista
                   </Badge>
                 )}
-                <LogOut className="w-4 h-4 text-muted-foreground" />
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setVeiculoServico({ id: v.id, placa: v.placa, servicos: v.servicos || [] }); setServicoOpen(true); }}
+                  className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
+                  title="Adicionar Serviços"
+                >
+                  <Tag className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); abrirSaida(v.placa); }}
+                  className="p-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors flex items-center justify-center"
+                  title="Registrar Saída"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
               </div>
-            </button>
+            </div>
           ))
         )}
       </div>
 
       <EntradaVeiculoDialog open={entradaOpen} onOpenChange={setEntradaOpen} onSuccess={carregarVeiculos} />
       <SaidaVeiculoDialog open={saidaOpen} onOpenChange={setSaidaOpen} onSuccess={carregarVeiculos} placaInicial={placaSaida} />
+      <AdicionarServicoDialog 
+        open={servicoOpen} 
+        onOpenChange={setServicoOpen} 
+        onSuccess={carregarVeiculos} 
+        veiculoId={veiculoServico.id} 
+        placa={veiculoServico.placa}
+        servicosIniciais={veiculoServico.servicos}
+      />
     </div>
   );
 }

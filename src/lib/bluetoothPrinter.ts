@@ -120,6 +120,7 @@ export class BluetoothPrinter {
       mensalista?: boolean;
       marca?: string | null;
       modelo?: string | null;
+      servicos?: { nome: string; valor: number }[];
     };
   }) {
     if (!this.isConnected()) {
@@ -165,7 +166,16 @@ export class BluetoothPrinter {
       encoder.alignCenter().line('--------------------------------');
       encoder.alignLeft();
 
-      if (veiculo.mensalista) {
+      if (veiculo.servicos && veiculo.servicos.length > 0) {
+        encoder.alignCenter().line('SERVICOS').alignLeft();
+        veiculo.servicos.forEach(s => {
+          encoder.line(`${s.nome}: R$ ${s.valor.toFixed(2).replace('.', ',')}`);
+        });
+        encoder.alignCenter().line('--------------------------------');
+        encoder.alignLeft();
+      }
+
+      if (veiculo.mensalista && (!veiculo.servicos || veiculo.servicos.length === 0)) {
         encoder.bold(true).line('MENSALISTA - SEM COBRANCA').bold(false);
       } else {
         encoder.bold(true).size(2, 2).line(`TOTAL: ${veiculo.valor}`).size(1, 1).bold(false);

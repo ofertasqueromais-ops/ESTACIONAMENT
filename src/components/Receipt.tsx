@@ -21,6 +21,7 @@ interface ReceiptProps {
     valor?: number;
     formaPagamento?: string;
     mensalista?: boolean;
+    servicos?: { nome: string; valor: number }[];
   };
   tipo?: 'entrada' | 'saida';
 }
@@ -102,9 +103,24 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ estacio
               <span className="font-bold text-xs uppercase">Forma de pagamento</span>
               <span className="capitalize">{veiculo.formaPagamento || 'Dinheiro'}</span>
             </div>
+
+            {veiculo.servicos && veiculo.servicos.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-100 border-dashed space-y-1">
+                <div className="text-center mb-1">
+                  <span className="font-bold text-[10px] tracking-widest uppercase">Serviços</span>
+                </div>
+                {veiculo.servicos.map((s, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs">
+                    <span>{s.nome}</span>
+                    <span>{formatarMoeda(s.valor)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t-2 border-dashed border-gray-200">
               <span className="font-bold">Total</span>
-              <span className="font-bold">{veiculo.mensalista ? 'GRÁTIS' : formatarMoeda(veiculo.valor || 0)}</span>
+              <span className="font-bold">{veiculo.mensalista && (!veiculo.servicos || veiculo.servicos.length === 0) ? 'GRÁTIS' : formatarMoeda(veiculo.valor || 0)}</span>
             </div>
           </div>
         ) : (

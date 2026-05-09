@@ -27,6 +27,7 @@ interface VeiculoAtivo {
   entrada: string;
   mensalista: boolean;
   estacionamento_id: string | null;
+  servicos?: { nome: string; valor: number }[];
 }
 
 interface Estacionamento {
@@ -53,7 +54,9 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const agora = new Date();
-  const valor = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
+  const valorTempo = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
+  const valorServicos = veiculo?.servicos?.reduce((acc, curr) => acc + curr.valor, 0) || 0;
+  const valorTotal = (veiculo?.mensalista && !mensalistaVencido ? 0 : valorTempo) + valorServicos;
   const tempo = veiculo ? formatarTempo(new Date(veiculo.entrada), agora) : '';
 
   const buscarVeiculo = useCallback(async (placaArg?: string) => {
@@ -117,7 +120,9 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     setLoading(true);
     try {
       const saida = new Date();
-      const valorFinal = veiculo.mensalista && !mensalistaVencido ? 0 : calcularValor(veiculo.tipo, new Date(veiculo.entrada), saida, pricingConfig);
+      const valorFinalTempo = veiculo.mensalista && !mensalistaVencido ? 0 : calcularValor(veiculo.tipo, new Date(veiculo.entrada), saida, pricingConfig);
+      const valorFinalServicos = veiculo.servicos?.reduce((acc, curr) => acc + curr.valor, 0) || 0;
+      const valorFinal = valorFinalTempo + valorFinalServicos;
 
       const { error: updateErr } = await supabase
         .from('veiculos')
@@ -158,9 +163,10 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
             entrada: new Date(veiculo.entrada).toLocaleString('pt-BR'),
             saida: new Date().toLocaleString('pt-BR'),
             tempo,
-            valor: formatarMoeda(valor),
-            formaPagamento: veiculo.mensalista && !mensalistaVencido ? '' : formaPagamento,
-            mensalista: veiculo.mensalista && !mensalistaVencido
+            valor: formatarMoeda(valorTotal),
+            formaPagamento: veiculo.mensalista && !mensalistaVencido && valorTotal === 0 ? '' : formaPagamento,
+            mensalista: veiculo.mensalista && !mensalistaVencido,
+            servicos: veiculo.servicos
           }
         });
         toast.success("Recibo impresso via Bluetooth!");
@@ -233,9 +239,10 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
                   entrada: veiculo.entrada,
                   saida: new Date().toISOString(),
                   tempo,
-                  valor,
+                  valor: valorTotal,
                   formaPagamento,
-                  mensalista: veiculo.mensalista && !mensalistaVencido
+                  mensalista: veiculo.mensalista && !mensalistaVencido,
+                  servicos: veiculo.servicos
                 }}
               />
             </div>
@@ -258,20 +265,24 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="stat-card">
-                <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" /> Tempo</p>
-                <p className="text-lg font-bold">{tempo}</p>
-              </div>
-              <div className="stat-card">
-                <p className="text-xs text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Valor</p>
-                <p className="text-lg font-bold">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="stat-card p-2 text-center">
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><Clock className="w-3 h-3" /> Tempo</p>
+                <p className="text-sm font-bold mt-1">
                   {veiculo.mensalista && !mensalistaVencido ? (
                     <span className="text-success">Grátis</span>
                   ) : (
-                    formatarMoeda(valor)
+                    formatarMoeda(valorTempo)
                   )}
                 </p>
+              </div>
+              <div className="stat-card p-2 text-center">
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><DollarSign className="w-3 h-3" /> Serviços</p>
+                <p className="text-sm font-bold mt-1">{formatarMoeda(valorServicos)}</p>
+              </div>
+              <div className="stat-card p-2 text-center bg-primary/5 border-primary/20">
+                <p className="text-[10px] text-primary flex items-center justify-center gap-1 font-bold">Total</p>
+                <p className="text-sm font-bold mt-1 text-primary">{formatarMoeda(valorTotal)}</p>
               </div>
             </div>
 
