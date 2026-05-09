@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calcularValor, formatarTempo, formatarPlaca, formatarMoeda, PricingConfig } from '@/lib/parking';
@@ -51,10 +52,12 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>({});
   const [isBluetoothConnected, setIsBluetoothConnected] = useState(bluetoothPrinter.isConnected());
   const [isConnectingBluetooth, setIsConnectingBluetooth] = useState(false);
+  const [isentarTempo, setIsentarTempo] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const agora = new Date();
-  const valorTempo = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
+  const valorTempoCalculado = veiculo ? calcularValor(veiculo.tipo, new Date(veiculo.entrada), agora, pricingConfig) : 0;
+  const valorTempo = isentarTempo ? 0 : valorTempoCalculado;
   const valorServicos = veiculo?.servicos?.reduce((acc, curr) => acc + curr.valor, 0) || 0;
   const valorTotal = (veiculo?.mensalista && !mensalistaVencido ? 0 : valorTempo) + valorServicos;
   const tempo = veiculo ? formatarTempo(new Date(veiculo.entrada), agora) : '';
@@ -120,7 +123,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
     setLoading(true);
     try {
       const saida = new Date();
-      const valorFinalTempo = veiculo.mensalista && !mensalistaVencido ? 0 : calcularValor(veiculo.tipo, new Date(veiculo.entrada), saida, pricingConfig);
+      const valorFinalTempo = (veiculo.mensalista && !mensalistaVencido) || isentarTempo ? 0 : calcularValor(veiculo.tipo, new Date(veiculo.entrada), saida, pricingConfig);
       const valorFinalServicos = veiculo.servicos?.reduce((acc, curr) => acc + curr.valor, 0) || 0;
       const valorFinal = valorFinalTempo + valorFinalServicos;
 
@@ -164,7 +167,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
             saida: new Date().toLocaleString('pt-BR'),
             tempo,
             valor: formatarMoeda(valorTotal),
-            formaPagamento: veiculo.mensalista && !mensalistaVencido && valorTotal === 0 ? '' : formaPagamento,
+            formaPagamento: valorTotal === 0 ? '' : formaPagamento,
             mensalista: veiculo.mensalista && !mensalistaVencido,
             servicos: veiculo.servicos
           }
@@ -186,6 +189,7 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
       setVeiculo(null);
       setFinalizado(false);
       setMensalistaVencido(false);
+      setIsentarTempo(false);
     }
     onOpenChange(o);
   };
@@ -262,6 +266,19 @@ export function SaidaVeiculoDialog({ open, onOpenChange, onSuccess, placaInicial
               <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-warning-foreground">
                 <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
                 <span className="text-sm font-medium">Mensalista com plano VENCIDO! Cobrança normal aplicada.</span>
+              </div>
+            )}
+
+            {(!veiculo.mensalista || mensalistaVencido) && (
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-slate-50">
+                <Label htmlFor="isentar-tempo" className="cursor-pointer font-medium">
+                  Cobrar apenas serviços (Isentar tempo)
+                </Label>
+                <Switch 
+                  id="isentar-tempo" 
+                  checked={isentarTempo} 
+                  onCheckedChange={setIsentarTempo}
+                />
               </div>
             )}
 
