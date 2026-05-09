@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,7 +48,11 @@ export default function Dashboard() {
       query = query.eq('user_id', user.id);
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) {
+      console.error('Erro ao carregar veículos:', error);
+      toast.error('Erro ao carregar veículos. Verifique o console.');
+    }
     setVeiculos(data || []);
     setLoading(false);
   }, [user, isImpersonating, impersonatedEstacionamentoId]);
